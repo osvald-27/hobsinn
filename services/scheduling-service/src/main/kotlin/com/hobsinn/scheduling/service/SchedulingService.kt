@@ -196,3 +196,7 @@ class SchedulingService(
         return base + pct
     }
 }
+
+// Extension — called by controller
+fun SchedulingService.getOpenSpecialCalls() =
+    requestRepo.findOpenSpecialCalls(Instant.now())
