@@ -12,8 +12,6 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-// ── Request / Response DTOs ───────────────────────────────────────────────────
-
 data class CreateSpecialCallRequest(
     val requestingUserId: UUID,
     val locationLat: BigDecimal,
@@ -22,9 +20,7 @@ data class CreateSpecialCallRequest(
     val requestedTime: Instant
 )
 
-data class MatchRequest(
-    val pickupUserId: UUID
-)
+data class MatchRequest(val pickupUserId: UUID)
 
 data class PickupRequestSummary(
     val requestId: UUID,
@@ -44,13 +40,10 @@ fun PickupRequest.toSummary() = PickupRequestSummary(
     assignedProviderId = assignedProviderId
 )
 
-// ── Controller ────────────────────────────────────────────────────────────────
-
 @RestController
 @RequestMapping("/v1/pickups")
 class SchedulingController(private val schedulingService: SchedulingService) {
 
-    /** POST /v1/pickups/special-call — home user creates a pickup request */
     @PostMapping("/special-call")
     fun createSpecialCall(
         @RequestBody body: CreateSpecialCallRequest
@@ -67,14 +60,12 @@ class SchedulingController(private val schedulingService: SchedulingService) {
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
-    /** GET /v1/pickups/open — all open special calls visible to pickup users */
     @GetMapping("/open")
     fun getOpenSpecialCalls(): ResponseEntity<List<PickupRequestSummary>> {
         val open = schedulingService.getOpenSpecialCalls()
         return ResponseEntity.ok(open.map { it.toSummary() })
     }
 
-    /** POST /v1/pickups/{requestId}/match — pickup user accepts a request */
     @PostMapping("/{requestId}/match")
     fun matchRequest(
         @PathVariable requestId: UUID,
@@ -84,7 +75,6 @@ class SchedulingController(private val schedulingService: SchedulingService) {
         return ResponseEntity.ok(updated.toSummary())
     }
 
-    /** POST /v1/pickups/{requestId}/confirm-payment — MoMo payment confirmed */
     @PostMapping("/{requestId}/confirm-payment")
     fun confirmPayment(
         @PathVariable requestId: UUID
@@ -93,7 +83,6 @@ class SchedulingController(private val schedulingService: SchedulingService) {
         return ResponseEntity.ok(updated.toSummary())
     }
 
-    /** POST /v1/pickups/{requestId}/start — home user acknowledges arrival */
     @PostMapping("/{requestId}/start")
     fun startJob(
         @PathVariable requestId: UUID,
@@ -103,7 +92,6 @@ class SchedulingController(private val schedulingService: SchedulingService) {
         return ResponseEntity.ok(updated.toSummary())
     }
 
-    /** POST /v1/pickups/{requestId}/complete — pickup user submits completion */
     @PostMapping("/{requestId}/complete")
     fun completeJob(
         @PathVariable requestId: UUID,
@@ -113,7 +101,6 @@ class SchedulingController(private val schedulingService: SchedulingService) {
         return ResponseEntity.ok(updated.toSummary())
     }
 
-    /** POST /v1/pickups/{requestId}/cancel */
     @PostMapping("/{requestId}/cancel")
     fun cancelRequest(
         @PathVariable requestId: UUID,
@@ -123,7 +110,6 @@ class SchedulingController(private val schedulingService: SchedulingService) {
         return ResponseEntity.ok(updated.toSummary())
     }
 
-    /** Health check */
     @GetMapping("/health")
     fun health() = ResponseEntity.ok(mapOf("status" to "UP", "service" to "scheduling-service"))
 }
