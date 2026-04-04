@@ -194,9 +194,10 @@ class SchedulingService(
             estimatedCost.multiply(PLATFORM_PCT).setScale(2, RoundingMode.HALF_UP)
         else BigDecimal.ZERO
         return base + pct
-    }
-}
+    
+    /** Return all PENDING special calls — called by controller */
+    @Transactional(readOnly = true)
+    fun getOpenSpecialCalls(): List<PickupRequest> =
+        requestRepo.findOpenSpecialCalls(Instant.now())
 
-// Extension — called by controller
-fun SchedulingService.getOpenSpecialCalls() =
-    requestRepo.findOpenSpecialCalls(Instant.now())
+}
