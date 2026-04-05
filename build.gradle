@@ -14,7 +14,7 @@ allprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
         }
     }
 
@@ -29,14 +29,14 @@ subprojects {
 
     kotlin {
         jvmToolchain {
-            languageVersion.set(JavaLanguageVersion.of(21))
+            languageVersion.set(JavaLanguageVersion.of(25))
         }
     }
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
         kotlinOptions {
             freeCompilerArgs = ['-Xjsr305=strict']
-            jvmTarget = '21'
+            jvmTarget = '19'
         }
     }
 
