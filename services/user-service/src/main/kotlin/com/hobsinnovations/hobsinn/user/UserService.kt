@@ -23,7 +23,11 @@ class UserService(
             email = request.email,
             phone = request.phone,
             password = passwordEncoder.encode(request.password),
-            role = request.role
+            role = request.role,
+            accountStatus = request.accountStatus,
+            ecoPoints = request.ecoPoints,
+            kgCollected = request.kgCollected,
+            badges = request.badges.toMutableSet()
         )
         return userRepository.save(user)
     }
@@ -32,8 +36,16 @@ class UserService(
         return userRepository.findById(id).orElse(null)
     }
 
-    fun getUserByEmail(email: String): User? {
-        return userRepository.findByEmail(email).orElse(null)
+    fun searchUsers(role: UserRole?, status: AccountStatus?, query: String?): List<User> {
+        return userRepository.findAll().filter { user ->
+            val roleMatches = role == null || user.role == role
+            val statusMatches = status == null || user.accountStatus == status
+            val queryMatches = query.isNullOrBlank() ||
+                user.name.contains(query, ignoreCase = true) ||
+                user.email.contains(query, ignoreCase = true) ||
+                user.phone.contains(query, ignoreCase = true)
+            roleMatches && statusMatches && queryMatches
+        }
     }
 
     fun updateUser(id: Long, request: UpdateUserRequest): User? {
@@ -41,7 +53,14 @@ class UserService(
 
         val updatedUser = user.copy(
             name = request.name ?: user.name,
+            email = request.email ?: user.email,
             phone = request.phone ?: user.phone,
+            password = request.password?.let { passwordEncoder.encode(it) } ?: user.password,
+            role = request.role ?: user.role,
+            accountStatus = request.accountStatus ?: user.accountStatus,
+            ecoPoints = request.ecoPoints ?: user.ecoPoints,
+            kgCollected = request.kgCollected ?: user.kgCollected,
+            badges = request.badges?.toMutableSet() ?: user.badges,
             updatedAt = LocalDateTime.now()
         )
         return userRepository.save(updatedUser)
@@ -56,6 +75,20 @@ class UserService(
     fun getAllUsers(): List<User> {
         return userRepository.findAll()
     }
+
+    fun getSummary(): UserSummary {
+        val users = userRepository.findAll()
+        return UserSummary(
+            totalUsers = users.size,
+            adminCount = users.count { it.role == UserRole.ADMIN || it.role == UserRole.ADMINISTRATOR },
+            providerCount = users.count { it.role == UserRole.PROVIDER },
+            customerCount = users.count { it.role == UserRole.CUSTOMER || it.role == UserRole.HOUSEHOLD },
+            ambassadorCount = users.count { it.role == UserRole.AMBASSADOR },
+            activeAccounts = users.count { it.accountStatus == AccountStatus.ACTIVE },
+            suspendedAccounts = users.count { it.accountStatus == AccountStatus.SUSPENDED },
+            deactivatedAccounts = users.count { it.accountStatus == AccountStatus.DEACTIVATED }
+        )
+    }
 }
 
 data class CreateUserRequest(
@@ -63,10 +96,32 @@ data class CreateUserRequest(
     val email: String,
     val phone: String,
     val password: String,
-    val role: UserRole = UserRole.CUSTOMER
+    val role: UserRole = UserRole.CUSTOMER,
+    val accountStatus: AccountStatus = AccountStatus.ACTIVE,
+    val ecoPoints: Long = 0,
+    val kgCollected: Double = 0.0,
+    val badges: Set<String> = emptySet()
 )
 
 data class UpdateUserRequest(
     val name: String? = null,
-    val phone: String? = null
+    val email: String? = null,
+    val phone: String? = null,
+    val password: String? = null,
+    val role: UserRole? = null,
+    val accountStatus: AccountStatus? = null,
+    val ecoPoints: Long? = null,
+    val kgCollected: Double? = null,
+    val badges: Set<String>? = null
+)
+
+data class UserSummary(
+    val totalUsers: Int,
+    val adminCount: Int,
+    val providerCount: Int,
+    val customerCount: Int,
+    val ambassadorCount: Int,
+    val activeAccounts: Int,
+    val suspendedAccounts: Int,
+    val deactivatedAccounts: Int
 )
