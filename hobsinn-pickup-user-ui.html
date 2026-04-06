@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HOBSINN — Pickup User Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --green:#1DB954; --green-dark:#158a3e; --green-light:#d4f5e0;
+    --orange:#FF6B2B; --orange-light:#fff0e8;
+    --momo:#FFCC00; --momo-dark:#a38700;
+    --blue:#1A73E8; --blue-light:#e8f0fe;
+    --bg:#F4F6F4; --card:#fff;
+    --text:#182a18; --text-muted:#6b7c6b;
+    --border:#ddeadd; --red:#e53935;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Nunito',sans-serif;background:#0b2414;color:var(--text);}
+
+  .wrap{display:flex;gap:26px;padding:34px 26px;justify-content:center;flex-wrap:wrap;align-items:flex-start;min-height:100vh;}
+  .col{display:flex;flex-direction:column;}
+  .slabel{font-family:'Sora',sans-serif;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:10px;}
+
+  .phone{width:355px;background:var(--bg);border-radius:38px;overflow:hidden;box-shadow:0 28px 70px rgba(0,0,0,0.5),0 0 0 5px #1e3d28;display:flex;flex-direction:column;}
+  .notch-bar{background:#fff;height:26px;display:flex;align-items:center;justify-content:center;}
+  .notch{width:56px;height:11px;background:#182a18;border-radius:10px;}
+  .status-bar{background:#fff;padding:0 20px 8px;display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-muted);}
+
+  .scrollable{overflow-y:auto;flex:1;}
+  .section{padding:14px 18px;}
+  .sec-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;}
+  .label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  .divider{height:1px;background:var(--border);}
+
+  /* PAGE HEADER */
+  .page-header{background:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--border);flex-shrink:0;}
+  .back{width:34px;height:34px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;}
+  .page-title{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;}
+  .page-step{margin-left:auto;background:var(--green-light);color:var(--green-dark);border-radius:20px;padding:4px 10px;font-size:10px;font-weight:800;}
+
+  /* HERO BANNER */
+  .pu-hero{background:linear-gradient(155deg,#1a3a2a,#0a2016);padding:20px 22px 24px;flex-shrink:0;position:relative;overflow:hidden;}
+  .pu-hero::after{content:'🚛';position:absolute;right:16px;top:14px;font-size:58px;opacity:0.12;}
+  .hero-badge{background:var(--momo);color:#1a1a00;border-radius:20px;padding:4px 12px;font-size:10px;font-weight:800;display:inline-block;margin-bottom:10px;}
+  .hero-title{font-family:'Sora',sans-serif;color:#fff;font-size:20px;font-weight:800;line-height:1.3;margin-bottom:5px;}
+  .hero-sub{color:rgba(255,255,255,0.55);font-size:12px;}
+  .hero-stats{display:flex;gap:10px;margin-top:14px;}
+  .hs{background:rgba(255,255,255,0.08);border-radius:11px;padding:9px 13px;flex:1;}
+  .hs-val{font-family:'Sora',sans-serif;color:#fff;font-size:15px;font-weight:800;}
+  .hs-lbl{color:rgba(255,255,255,0.5);font-size:10px;margin-top:1px;}
+
+  /* PROFILE CARD */
+  .profile-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:13px;margin-bottom:10px;}
+  .pc-avatar{width:48px;height:48px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:2px solid var(--green);}
+  .pc-name{font-family:'Sora',sans-serif;font-size:14px;font-weight:800;}
+  .pc-zone{font-size:11px;color:var(--text-muted);margin-top:2px;}
+  .pc-rating{display:flex;align-items:center;gap:4px;margin-top:4px;}
+  .pc-stars{color:#FFD600;font-size:12px;}
+  .pc-num{font-size:11px;color:var(--text-muted);}
+
+  /* DAYS GRID */
+  .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:10px;}
+  .day-cell{border-radius:10px;border:1.5px solid var(--border);padding:7px 2px;text-align:center;cursor:pointer;transition:all 0.15s;background:#fff;}
+  .day-cell.active{background:var(--green);border-color:var(--green);}
+  .day-cell.active .dc-name,.day-cell.active .dc-note{color:#fff;}
+  .day-cell.disabled{opacity:0.38;pointer-events:none;background:#f0f0f0;}
+  .dc-name{font-family:'Sora',sans-serif;font-size:10px;font-weight:800;color:var(--text);}
+  .dc-note{font-size:8px;color:var(--text-muted);margin-top:2px;}
+
+  .days-hint{background:#fffbe6;border-radius:10px;padding:8px 11px;display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;border:1px solid #ffe566;}
+  .dh-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+  .dh-text{font-size:11px;color:#6b5000;line-height:1.5;}
+
+  /* TIME SLOT SELECTION */
+  .time-slot-list{display:flex;flex-direction:column;gap:8px;}
+  .ts-row{background:#fff;border-radius:13px;border:1.5px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all 0.15s;}
+  .ts-row.active{border-color:var(--green);background:var(--green-light);}
+  .ts-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:all 0.15s;}
+  .ts-row.active .ts-check{background:var(--green);border-color:var(--green);color:#fff;}
+  .ts-time{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;flex:1;}
+  .ts-tag{font-size:10px;font-weight:700;border-radius:20px;padding:3px 8px;}
+  .ts-tag.pop{background:#fff0e8;color:var(--orange);}
+  .ts-tag.ev{background:var(--blue-light);color:var(--blue);}
+  .ts-slots{font-size:10px;color:var(--text-muted);margin-top:2px;}
+  .ts-row.active .ts-slots{color:var(--green-dark);}
+
+  /* CUSTOM TIME */
+  .custom-time-row{display:flex;gap:8px;}
+  .time-input{flex:1;padding:11px 13px;border-radius:12px;border:1.5px solid var(--border);font-family:'Nunito',sans-serif;font-size:14px;color:var(--text);background:#fff;outline:none;}
+  .time-input:focus{border-color:var(--green);}
+
+  /* PRICING */
+  .pricing-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);overflow:hidden;margin-bottom:0;}
+  .pricing-row{padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);}
+  .pricing-row:last-child{border-bottom:none;}
+  .pr-icon{font-size:22px;width:38px;text-align:center;flex-shrink:0;}
+  .pr-label{flex:1;}
+  .pr-name{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;}
+  .pr-sub{font-size:10px;color:var(--text-muted);margin-top:2px;}
+  .pr-input-wrap{display:flex;align-items:center;gap:5px;}
+  .pr-input{width:80px;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:'Sora',sans-serif;font-size:14px;font-weight:800;color:var(--text);text-align:right;background:#f9faf9;outline:none;}
+  .pr-input:focus{border-color:var(--green);}
+  .pr-currency{font-size:12px;font-weight:700;color:var(--text-muted);}
+
+  .pricing-hint{background:var(--green-light);border-radius:11px;padding:9px 12px;display:flex;gap:8px;align-items:flex-start;margin-top:9px;}
+  .ph-icon{font-size:14px;flex-shrink:0;}
+  .ph-text{font-size:11px;color:var(--green-dark);line-height:1.5;}
+
+  /* MOMO SETUP */
+  .momo-card{background:linear-gradient(135deg,#fffbe6,#fff9c4);border-radius:16px;border:1.5px solid #ffe566;padding:15px 16px;}
+  .mc-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .mc-logo{background:var(--momo);border-radius:10px;padding:5px 10px;font-family:'Sora',sans-serif;font-size:13px;font-weight:900;color:#1a1a00;}
+  .mc-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;color:#6b4f00;}
+  .mc-verified{margin-left:auto;background:var(--green-light);color:var(--green-dark);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:800;}
+  .momo-number-row{display:flex;gap:8px;align-items:center;}
+  .momo-prefix{background:#fff;border-radius:10px;padding:11px 12px;font-family:'Sora',sans-serif;font-size:13px;font-weight:800;color:var(--text);border:1.5px solid #ffe566;flex-shrink:0;}
+  .momo-num-input{flex:1;padding:11px 13px;border-radius:10px;border:1.5px solid #ffe566;font-family:'Sora',sans-serif;font-size:14px;font-weight:700;background:#fff;outline:none;color:var(--text);}
+  .momo-num-input:focus{border-color:var(--momo-dark);}
+  .momo-hint{font-size:10px;color:#8a6500;margin-top:7px;}
+
+  /* SPECIAL CALL */
+  .special-toggle-card{background:#fff;border-radius:16px;border:1.5px solid var(--border);overflow:hidden;}
+  .stc-top{padding:14px 16px;display:flex;align-items:center;gap:12px;}
+  .stc-icon{font-size:26px;flex-shrink:0;}
+  .stc-text{flex:1;}
+  .stc-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;}
+  .stc-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+  .toggle{width:46px;height:26px;border-radius:13px;background:var(--green);position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s;}
+  .toggle.off{background:var(--border);}
+  .toggle-dot{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:23px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+  .toggle.off .toggle-dot{left:3px;}
+
+  /* THE EXPLAINER BOX — key feature */
+  .explainer{background:linear-gradient(135deg,#e8f0fe,#d2e3fc);border-radius:0 0 14px 14px;padding:13px 16px;border-top:1.5px solid #c5d8fc;}
+  .ex-eyebrow{font-size:10px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;}
+  .ex-title{font-family:'Sora',sans-serif;font-size:12px;font-weight:700;color:#0d47a1;margin-bottom:6px;}
+  .ex-body{font-size:11px;color:#1a3a6b;line-height:1.65;}
+  .ex-example{background:rgba(255,255,255,0.7);border-radius:9px;padding:9px 11px;margin-top:9px;border-left:3px solid var(--blue);}
+  .ex-example-title{font-size:10px;font-weight:800;color:var(--blue);margin-bottom:4px;}
+  .ex-example-text{font-size:11px;color:#1a3a6b;line-height:1.55;}
+  .ex-earn{display:inline-block;background:var(--blue);color:#fff;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:800;margin-top:6px;}
+
+  .special-price-row{padding:12px 16px;border-top:1.5px solid var(--border);display:flex;align-items:center;gap:12px;}
+  .spr-label{flex:1;}
+  .spr-name{font-family:'Sora',sans-serif;font-size:12px;font-weight:700;}
+  .spr-sub{font-size:10px;color:var(--text-muted);margin-top:2px;}
+
+  /* SUBMIT */
+  .submit-section{padding:14px 18px 22px;}
+  .preview-card{background:linear-gradient(135deg,#1DB954,#0d8c3c);border-radius:16px;padding:14px 16px;margin-bottom:13px;}
+  .prev-title{color:rgba(255,255,255,0.75);font-size:11px;margin-bottom:10px;font-weight:700;}
+  .prev-row{display:flex;justify-content:space-between;margin-bottom:6px;}
+  .prev-key{color:rgba(255,255,255,0.65);font-size:11px;}
+  .prev-val{color:#fff;font-size:11px;font-weight:700;}
+  .prev-divider{height:1px;background:rgba(255,255,255,0.15);margin:8px 0;}
+  .prev-earn{display:flex;justify-content:space-between;align-items:center;}
+  .prev-earn-lbl{color:rgba(255,255,255,0.8);font-size:12px;}
+  .prev-earn-val{font-family:'Sora',sans-serif;color:var(--momo);font-size:18px;font-weight:800;}
+
+  .cta{width:100%;padding:15px;border-radius:15px;border:none;font-family:'Sora',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all 0.18s;}
+  .cta.green{background:var(--green);color:#fff;box-shadow:0 5px 18px rgba(29,185,84,0.4);}
+
+  /* LEGEND */
+  .legend{background:rgba(255,255,255,0.06);border-radius:20px;padding:24px;width:250px;align-self:flex-start;margin-top:44px;}
+  .leg-logo{font-family:'Sora',sans-serif;color:#fff;font-size:20px;font-weight:800;margin-bottom:2px;}
+  .leg-tag{color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:18px;}
+  .li{display:flex;gap:9px;margin-bottom:13px;align-items:flex-start;}
+  .li-n{width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-family:'Sora',sans-serif;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+  .li-t{color:rgba(255,255,255,0.72);font-size:11px;line-height:1.55;}
+  .li-t strong{color:#fff;}
+  .leg-div{height:1px;background:rgba(255,255,255,0.1);margin:14px 0;}
+  .design-note{color:rgba(255,255,255,0.45);font-size:11px;line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══ SCREEN 1: PROFILE + DAY SELECTION ══ -->
+  <div class="col">
+    <div class="slabel">01 — Profile &amp; Availability Days</div>
+    <div class="phone">
+      <div class="notch-bar"><div class="notch"></div></div>
+      <div class="status-bar"><span>9:41</span><span>📶 MTN 🔋</span></div>
+
+      <div class="pu-hero">
+        <div class="hero-badge">🚛 Pickup User Setup</div>
+        <div class="hero-title">Set your schedule.<br>Earn every week.</div>
+        <div class="hero-sub">Tell us when you're available — we send jobs to you</div>
+        <div class="hero-stats">
+          <div class="hs"><div class="hs-val">3 steps</div><div class="hs-lbl">to go live</div></div>
+          <div class="hs"><div class="hs-val">~5 min</div><div class="hs-lbl">to complete</div></div>
+          <div class="hs"><div class="hs-val">MoMo</div><div class="hs-lbl">instant payout</div></div>
+        </div>
+      </div>
+
+      <div class="scrollable">
+        <div class="section">
+          <!-- Profile -->
+          <div class="sec-title">Your Profile</div>
+          <div class="profile-card">
+            <div class="pc-avatar">🧑🏾</div>
+            <div>
+              <div class="pc-name">Joseph Kamga</div>
+              <div class="pc-zone">📍 Molyko – Buea</div>
+              <div class="pc-rating">
+                <div class="pc-stars">★★★★★</div>
+                <div class="pc-num">4.9 · 127 jobs done</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"/>
+
+        <!-- Day Selection -->
+        <div class="section">
+          <div class="sec-title">Which days are you available? 📅</div>
+
+          <div class="days-hint">
+            <div class="dh-icon">💡</div>
+            <div class="dh-text">Most users in Buea book pickups <strong>Tuesday to Saturday</strong>. We've pre-selected those days to help you earn more. Adjust freely.</div>
+          </div>
+
+          <div class="label">Tap to select / deselect</div>
+          <div class="days-grid">
+            <div class="day-cell disabled">
+              <div class="dc-name">SUN</div>
+              <div class="dc-note">Low</div>
+            </div>
+            <div class="day-cell disabled">
+              <div class="dc-name">MON</div>
+              <div class="dc-note">Low</div>
+            </div>
+            <div class="day-cell active">
+              <div class="dc-name">TUE</div>
+              <div class="dc-note">🔥</div>
+            </div>
+            <div class="day-cell active">
+              <div class="dc-name">WED</div>
+              <div class="dc-note">🔥</div>
+            </div>
+            <div class="day-cell active">
+              <div class="dc-name">THU</div>
+              <div class="dc-note">🔥</div>
+            </div>
+            <div class="day-cell active">
+              <div class="dc-name">FRI</div>
+              <div class="dc-note">🔥</div>
+            </div>
+            <div class="day-cell active">
+              <div class="dc-name">SAT</div>
+              <div class="dc-note">🔥</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:6px;">
+            <span>🔥 High demand</span>
+            <span style="opacity:0.5">· Grey = not selectable</span>
+          </div>
+        </div>
+
+        <div class="divider"/>
+
+        <!-- Time Slots -->
+        <div class="section">
+          <div class="sec-title">Which time slots will you cover? ⏰</div>
+
+          <div class="days-hint" style="margin-bottom:10px;">
+            <div class="dh-icon">📊</div>
+            <div class="dh-text">Data shows <strong>6–8 AM</strong> and <strong>5–7 PM</strong> are the most requested times. Drivers who cover both earn <strong>2× more</strong> per week.</div>
+          </div>
+
+          <div class="time-slot-list">
+            <div class="ts-row active">
+              <div class="ts-check">✓</div>
+              <div style="flex:1">
+                <div class="ts-time">6:00 AM – 8:00 AM <span class="ts-tag pop">🔥 Most popular</span></div>
+                <div class="ts-slots">Avg. 4–6 bookings per day on your selected days</div>
+              </div>
+            </div>
+            <div class="ts-row">
+              <div class="ts-check"></div>
+              <div style="flex:1">
+                <div class="ts-time">10:00 AM – 12:00 PM</div>
+                <div class="ts-slots">Avg. 2–3 bookings per day</div>
+              </div>
+            </div>
+            <div class="ts-row active">
+              <div class="ts-check">✓</div>
+              <div style="flex:1">
+                <div class="ts-time">5:00 PM – 7:00 PM <span class="ts-tag ev">🌆 Evening peak</span></div>
+                <div class="ts-slots">Avg. 5–7 bookings per day on your selected days</div>
+              </div>
+            </div>
+            <div class="ts-row">
+              <div class="ts-check"></div>
+              <div style="flex:1">
+                <div class="ts-time">+ Add custom time slot</div>
+                <div class="ts-slots">Set your own hours</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2: PRICING + MOMO ══ -->
+  <div class="col">
+    <div class="slabel">02 — Pricing &amp; MoMo Setup</div>
+    <div class="phone">
+      <div class="notch-bar"><div class="notch"></div></div>
+      <div class="status-bar"><span>9:44</span><span>📶 MTN 🔋</span></div>
+
+      <div class="page-header">
+        <div class="back">←</div>
+        <div class="page-title">Pricing &amp; Payment</div>
+        <div class="page-step">Step 2 of 3</div>
+      </div>
+
+      <div class="scrollable">
+        <!-- Pricing -->
+        <div class="section">
+          <div class="sec-title">Set your price per bag 💰</div>
+          <div class="label">How much do you charge per sac?</div>
+
+          <div class="pricing-card">
+            <div class="pricing-row">
+              <div class="pr-icon">🔄</div>
+              <div class="pr-label">
+                <div class="pr-name">Weekly Slot — per bag</div>
+                <div class="pr-sub">Recurring bookings · predictable income</div>
+              </div>
+              <div class="pr-input-wrap">
+                <input class="pr-input" type="number" value="350" min="100"/>
+                <div class="pr-currency">XAF</div>
+              </div>
+            </div>
+            <div class="pricing-row">
+              <div class="pr-icon">📞</div>
+              <div class="pr-label">
+                <div class="pr-name">Special Call — per bag</div>
+                <div class="pr-sub">One-off urgent requests · charge more</div>
+              </div>
+              <div class="pr-input-wrap">
+                <input class="pr-input" type="number" value="600" min="100"/>
+                <div class="pr-currency">XAF</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pricing-hint">
+            <div class="ph-icon">📊</div>
+            <div class="ph-text">Drivers in Buea charge <strong>300–500 XAF</strong> for weekly slots and <strong>500–800 XAF</strong> for special calls. Your prices are competitive.</div>
+          </div>
+        </div>
+
+        <div class="divider"/>
+
+        <!-- Earnings Preview -->
+        <div class="section">
+          <div class="sec-title">Your estimated weekly earnings 📈</div>
+          <div style="background:#fff;border-radius:14px;border:1.5px solid var(--border);overflow:hidden;">
+            <div style="padding:13px 16px;border-bottom:1px solid var(--border);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:12px;color:var(--text-muted);">Weekly slots (5 days × 5 bags × 350 XAF)</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <div style="font-size:11px;color:var(--text-muted);">= 25 bags</div>
+                <div style="font-family:'Sora',sans-serif;font-size:14px;font-weight:800;color:var(--text);">8 750 XAF</div>
+              </div>
+            </div>
+            <div style="padding:13px 16px;border-bottom:1px solid var(--border);">
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Special calls (est. 4/week × 3 bags × 600 XAF)</div>
+              <div style="display:flex;justify-content:space-between;">
+                <div style="font-size:11px;color:var(--text-muted);">= 12 bags</div>
+                <div style="font-family:'Sora',sans-serif;font-size:14px;font-weight:800;color:var(--text);">7 200 XAF</div>
+              </div>
+            </div>
+            <div style="padding:13px 16px;background:var(--green-light);">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-family:'Sora',sans-serif;font-size:13px;font-weight:700;color:var(--green-dark);">Estimated weekly total</div>
+                <div style="font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:var(--green-dark);">15 950 XAF</div>
+              </div>
+              <div style="font-size:10px;color:var(--green-dark);opacity:0.7;margin-top:3px;">Updates live as you adjust prices ↑</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"/>
+
+        <!-- MoMo Setup -->
+        <div class="section">
+          <div class="sec-title">Where do we send your money? 📲</div>
+          <div class="momo-card">
+            <div class="mc-top">
+              <div class="mc-logo">MoMo</div>
+              <div class="mc-title">MTN Mobile Money</div>
+              <div class="mc-verified">✅ Instant payout</div>
+            </div>
+            <div class="label" style="color:#8a6500;">Your MoMo number</div>
+            <div class="momo-number-row">
+              <div class="momo-prefix">🇨🇲 +237</div>
+              <input class="momo-num-input" type="tel" placeholder="6XX XXX XXX" value="677 432 891"/>
+            </div>
+            <div class="momo-hint">💳 Payment is released automatically when a job is marked complete. No chasing clients.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 3: SPECIAL CALLS + CONFIRM ══ -->
+  <div class="col">
+    <div class="slabel">03 — Special Calls &amp; Go Live</div>
+    <div class="phone">
+      <div class="notch-bar"><div class="notch"></div></div>
+      <div class="status-bar"><span>9:47</span><span>📶 MTN 🔋</span></div>
+
+      <div class="page-header">
+        <div class="back">←</div>
+        <div class="page-title">Special Calls &amp; Confirm</div>
+        <div class="page-step">Step 3 of 3</div>
+      </div>
+
+      <div class="scrollable">
+        <!-- Special Call Toggle -->
+        <div class="section">
+          <div class="sec-title">Special Calls 📞</div>
+
+          <div class="special-toggle-card">
+            <div class="stc-top">
+              <div class="stc-icon">📞</div>
+              <div class="stc-text">
+                <div class="stc-title">Accept Special Calls</div>
+                <div class="stc-sub">Urgent requests outside your set slots</div>
+              </div>
+              <div class="toggle">
+                <div class="toggle-dot"></div>
+              </div>
+            </div>
+
+            <!-- THE EXPLAINER BOX -->
+            <div class="explainer">
+              <div class="ex-eyebrow">ℹ️ What is a Special Call?</div>
+              <div class="ex-title">An urgent, on-demand pickup request</div>
+              <div class="ex-body">
+                A Special Call happens when a household needs a pickup <strong>outside the normal weekly slots</strong> — for example, after a party, a move, or an unexpected amount of waste. The user pays a higher per-bag rate because it's urgent and unscheduled.
+                <br/><br/>
+                When a Special Call comes in, <strong>you get a notification</strong>. You can <strong>accept or decline</strong> — there's no penalty for saying no. If you accept, you agree to go within the time window the user requested.
+              </div>
+              <div class="ex-example">
+                <div class="ex-example-title">📖 Real example</div>
+                <div class="ex-example-text">
+                  Amina hosted a birthday on Friday night. Saturday morning she has 7 extra bags. She opens HOBSINN, books a Special Call for 10 AM. You get notified, accept, arrive, collect 7 bags → <strong>7 × 600 XAF = 4 200 XAF</strong> sent to your MoMo when done.
+                </div>
+                <div class="ex-earn">💰 You earn more per bag than weekly slots</div>
+              </div>
+            </div>
+
+            <!-- Special call price -->
+            <div class="special-price-row">
+              <div class="spr-label">
+                <div class="spr-name">Your Special Call rate</div>
+                <div class="spr-sub">Set higher than your weekly rate</div>
+              </div>
+              <div class="pr-input-wrap">
+                <input class="pr-input" type="number" value="600" min="100"/>
+                <div class="pr-currency">XAF/bag</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Response time -->
+          <div style="margin-top:10px;">
+            <div class="label">Max response time for Special Calls</div>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;padding:10px;border-radius:11px;border:1.5px solid var(--border);text-align:center;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:var(--text-muted);">30 min</div>
+              <div style="flex:1;padding:10px;border-radius:11px;border:1.5px solid var(--green);text-align:center;background:var(--green-light);cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:800;color:var(--green-dark);">1 hour</div>
+              <div style="flex:1;padding:10px;border-radius:11px;border:1.5px solid var(--border);text-align:center;background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:var(--text-muted);">2 hours</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"/>
+
+        <!-- Summary Preview -->
+        <div class="submit-section">
+          <div class="sec-title">Your setup summary ✅</div>
+          <div class="preview-card">
+            <div class="prev-title">📋 PROFILE OVERVIEW</div>
+            <div class="prev-row">
+              <span class="prev-key">Available days</span>
+              <span class="prev-val">Tue – Sat</span>
+            </div>
+            <div class="prev-row">
+              <span class="prev-key">Time slots</span>
+              <span class="prev-val">6–8 AM · 5–7 PM</span>
+            </div>
+            <div class="prev-row">
+              <span class="prev-key">Weekly slot rate</span>
+              <span class="prev-val">350 XAF / bag</span>
+            </div>
+            <div class="prev-row">
+              <span class="prev-key">Special call rate</span>
+              <span class="prev-val">600 XAF / bag</span>
+            </div>
+            <div class="prev-row">
+              <span class="prev-key">Special calls</span>
+              <span class="prev-val">✅ Enabled · 1 hr</span>
+            </div>
+            <div class="prev-row">
+              <span class="prev-key">MoMo payout</span>
+              <span class="prev-val">677 432 891</span>
+            </div>
+            <div class="prev-divider"/>
+            <div class="prev-earn">
+              <div class="prev-earn-lbl">Est. weekly income</div>
+              <div class="prev-earn-val">~15 950 XAF 💰</div>
+            </div>
+          </div>
+
+          <button class="cta green">🚀 Go Live — Start Receiving Jobs</button>
+
+          <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:10px;">
+            You can change your schedule anytime from your profile
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend" style="order:99">
+    <div class="leg-logo">🚛 Pickup User</div>
+    <div class="leg-tag">HOBSINN · Driver Onboarding</div>
+
+    <div class="li"><div class="li-n">1</div><div class="li-t"><strong>Days &amp; Time Slots</strong> — Tue–Sat pre-selected based on demand data. 6–8 AM and 5–7 PM highlighted as peak slots with booking volume shown.</div></div>
+    <div class="li"><div class="li-n">2</div><div class="li-t"><strong>Pricing &amp; MoMo</strong> — Separate prices for weekly slots vs special calls. Live earnings calculator updates as driver types. MoMo number linked for instant escrow release.</div></div>
+    <div class="li"><div class="li-n">3</div><div class="li-t"><strong>Special Calls + Confirm</strong> — Toggle with a plain-language explainer box, real example, and response time selector. Full summary before going live.</div></div>
+
+    <div class="leg-div"/>
+    <div class="design-note">
+      <strong style="color:#fff;">Key design decisions:</strong><br/><br/>
+      🔥 Tue–Sat pre-selected, not blank — reduces decision fatigue<br/><br/>
+      📊 Demand data shown next to each slot — drivers trust data, not guesswork<br/><br/>
+      💡 Special Call explainer uses a real Buea story — not abstract text<br/><br/>
+      💰 Earnings calculator is live — motivates completing the form<br/><br/>
+      🔒 MoMo escrow explained at point of entry — builds trust immediately
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

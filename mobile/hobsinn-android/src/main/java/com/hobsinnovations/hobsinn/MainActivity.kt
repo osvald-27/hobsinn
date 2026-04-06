@@ -20,8 +20,22 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Demo entry point
-                    SpecialCallScreen()
+                    // Simple routing representation
+                    var currentScreen by remember { mutableStateOf("home") }
+
+                    Column {
+                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            Button(onClick = { currentScreen = "home" }) { Text("Home User") }
+                            Button(onClick = { currentScreen = "pickup" }) { Text("Pickup User") }
+                            Button(onClick = { currentScreen = "leaderboard" }) { Text("Battles") }
+                        }
+                        
+                        when (currentScreen) {
+                            "home" -> SpecialCallScreen()
+                            "pickup" -> PickupUserSetupScreen()
+                            "leaderboard" -> com.hobsinnovations.hobsinn.ui.gamification.LeaderboardScreen()
+                        }
+                    }
                 }
             }
         }

@@ -29,7 +29,18 @@ data class User(
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(nullable = false)
-    val updatedAt: LocalDateTime = LocalDateTime.now()
+    val updatedAt: LocalDateTime = LocalDateTime.now(),
+
+    @Column(nullable = false)
+    var ecoPoints: Long = 0,
+
+    @Column(nullable = false)
+    var kgCollected: Double = 0.0,
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_badges", joinColumns = [JoinColumn(name = "user_id")])
+    @Column(name = "badge")
+    var badges: MutableSet<String> = mutableSetOf()
 )
 
 enum class UserRole {
