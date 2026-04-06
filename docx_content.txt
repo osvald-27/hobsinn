@@ -1,0 +1,2279 @@
+HOBS INNOVATIONS
+HOBSINN
+Integrated Waste Management & Community Health Platform
+ANALYSIS AND DESIGN DOCUMENT
+Version 2.0  |  April 2026
+CAHMIN 2026  |  3–4 April 2026  |  Mountain Hotel, Buea
+PROJECT TEAM
+Role
+Sprint Responsibilities
+Project Lead
+Delivery coordination, stakeholder demos, submission packaging
+Architect / System Designer
+Architecture oversight, API contract review, integration validation
+DevOps / Infrastructure Lead
+CI/CD pipelines, Docker, Kubernetes, cloud infra, secrets management
+UI/UX Lead
+Android app (hobsinn), Admin dashboard, bilingual UI
+AI Lead
+MatchingEngine scoring, HotspotDetector, vision module for bag sizing
+Data Analyst
+PostgreSQL schema, PostGIS indexes, test data, query optimisation
+Confidential | CAHMIN 2026 | Buea, Cameroon
+Table of Contents
+PART ONE — ANALYSIS PHASE
+  1. Executive Summary
+  2. Problem Definition
+  3. Stakeholder Identification
+  4. Research Methodology
+  5. Survey Results and Design Implications
+  6. User Behaviour Insights
+  7. User Personas
+  8. Research-to-Feature Mapping
+  9. Existing Systems Review
+  10. Internal Developer Audit Questions
+  11. Functional Requirements
+  12. Non-Functional Requirements — The 12-Factor Scale Design
+  13. Risk Analysis
+  14. Feasibility Analysis
+PART TWO — DESIGN PHASE
+  15. Architectural Philosophy and System Overview
+  16. Five-Tier Architecture
+  17. Monorepo and Module Structure
+  18. Data Acquisition Tier
+  19. Network and Communication Tier
+  20. Backend and Application Tier — Service Registry
+  21. Backend and Application Tier — Service Specifications
+  22. AI and Analytics Tier
+  23. UI/UX and Presentation Tier
+  24. Data Model and PostgreSQL Schema
+  25. Kafka Topics and Event Catalogue
+  26. Class Design
+  27. Use Case Specifications
+  28. Sequence Diagrams
+  29. Activity Diagrams
+  30. Data Flow Diagrams
+  31. State Machine Definitions
+  32. Scalability, Reliability and Fault Tolerance
+  33. Infrastructure and DevOps
+  34. AI Modelling Detail
+  35. Implementation Guide
+APPENDICES
+  A. Glossary and Index
+  B. References, Credits and Further Reading
+Use Case Reference
+Every reference to UC1 through UC6 in this document maps to the following definitions. UC1, UC2, and UC3 are fully implemented for the hackathon sprint. UC4, UC5, and UC6 are architecturally designed and scaffolded in this phase but implemented after the hackathon.
+Code
+Name
+Status
+Description
+UC1
+Household Pickup Scheduling — Special Call
+Current — fully implemented
+A home user schedules a one-off waste pickup with a custom time and location. The platform charges per bag (with optional AI volume estimation), matches the request to the best available pickup user, holds payment in escrow, and releases funds upon job completion.
+UC2
+General Pickup Slot System
+Current — fully implemented
+A recurring community pickup system where home users register for pre-defined weekly slots and pickup users subscribe to monthly slot coverage. Pricing scales dynamically with aggregated bag capacity from all registered users.
+UC3
+Reporting and Campaign Services
+Current — fully implemented
+Covers (a) major dump reporting → Ambassador validation → campaign launch → crowdfunding → coordinated cleanup; and (b) dirty environment reporting → volunteer cleanup campaigns → QR-based attendance → digital certificates; and (c) health/sensitisation campaigns for community awareness.
+UC4
+Drone-Based Autonomous Waste Monitoring
+Future — architecture defined, integration post-hackathon
+Integrates the TIES drone system (github.com/osvald-27/ties) to auto-detect dumps via aerial photography and computer vision, generate automatic dump reports, and predict waste spread using weather and terrain data.
+UC5
+Clinical Environmental Sensor Network
+Future — architecture defined
+ESP32 IoT sensor nodes measuring PM2.5, CO, water turbidity, and soil heavy metals correlated with anonymised disease incidence data to generate health advisories and risk scores.
+UC6
+Recycling Digital Pipeline
+Future — architecture defined
+A digital pipeline linking waste producers to transport and recycling companies, categorising waste into glass, plastic, and organic streams and coordinating collection logistics.
+PART ONE — ANALYSIS PHASE
+1. Executive Summary
+HOBSINN is the operational platform of HOBS Innovations. It is a distributed waste management and community health coordination system designed for urban and peri-urban communities in Cameroon. The name HOBSINN reflects the startup brand identity while the platform tracks two strategic tracks — environmental coordination and community health.
+The platform closes three immediate citizen-facing failures: households have no structured mechanism to schedule waste pickup, large unmanaged dumps accumulate because reporting them produces no coordinated financial or logistical response, and citizens who see dirty environments have no formal channel that connects their observation to a cleanup action.
+The system is built on a five-tier distributed architecture using Java and Kotlin microservices, Apache Kafka for asynchronous event transport, PostgreSQL with PostGIS for geospatial data, MongoDB for analytics, and an Android mobile app. It is containerised with Docker and deployable to Kubernetes. The architecture is designed to absorb three future capability tracks: drone-based autonomous waste monitoring (UC4), clinical environmental sensor networks (UC5), and a recycling digital pipeline (UC6).
+Every actor in the system — from the home user to the ambassador — is treated as a class hierarchy: every user is first a home user, with pickup users and ambassadors inheriting and extending those base capabilities. This inheritance principle simplifies design, reduces duplication, and makes the system intuitive.
+Survey data from 27 respondents confirms that 100% recognise the link between poor sanitation and disease, only 19% consider their community clean, and 57.1% identify regular waste collection as the single highest-impact improvement. Two specific technical challenges — poor network connectivity and low digital literacy — are addressed with a customer service fallback (system admin creates accounts on behalf of users) and a planned offline/free-mode in the future.
+2. Problem Definition
+2.1 Social Problems This System Solves
+Unreliable and unstructured waste pickup schedules — no confirmed time, no accountability.
+High ratio of accumulated trash to preventable illness in peri-urban Buea communities.
+No mechanism to drive peers towards community cleanups.
+Dirty, irritating environments with no formal reporting or action channel.
+Hotspots of pollution that remain undetected because no aggregation layer exists.
+Low job availability and income predictability for informal waste collectors.
+Unawareness of community campaigns among residents who want to participate.
+2.2 Technical Problems and Solutions
+Technical Problem
+Solution Now
+Future Plan
+Poor network connectivity in Buea and Cameroon at large
+Customer service number prominently available. System Admin creates and manages accounts on behalf of users over the phone.
+Free-mode data access (similar to Facebook Free Basics) — core app flows accessible with zero data cost.
+Low digital literacy among target demographics
+System Admin role allows any user to be created and managed remotely. Customer service assists with all transactions.
+Simplified UI with voice prompts, icon-first navigation, and French/English bilingual support throughout.
+Completing full implementation in under 24 hours for hackathon
+Solo implementation using Claude Code instances in relay — each instance receives a precise handoff document from the previous instance ensuring continuity.
+Full team-based sprint methodology with Linear project management for post-hackathon development.
+Keeping up with AI-generated code and ensuring DevOps reliability
+All infrastructure follows the 12 scalability design factors (Section 12). CI/CD pipeline enforces standards automatically.
+Dedicated DevOps lead role with monitoring dashboards and automated rollback on failures.
+3. Stakeholder Identification
+3.1 Primary Stakeholders
+Stakeholder
+Role in HOBSINN
+Primary Need
+Home User (base class)
+Schedules pickups, reports dumps and dirty environments, funds and volunteers for campaigns, views health campaigns. Every other actor inherits from this class.
+Clean environment, reliable pickup service, easy participation in community campaigns.
+Pickup User (extends Home User)
+Registers for general slots or accepts special calls, manages ongoing jobs, earns per-job with transparent payment.
+Predictable job flow, guaranteed payment before completion, minimum empty runs.
+Ambassador (extends Home User)
+Single point of truth and verification in a community. Validates dump reports and dirty environment reports, coordinates cleanups, manages pickup assignments for major dump jobs.
+Digital coordination tools, clear authority and accountability, badging and certification rewards.
+System Administrator
+Creates and manages any user account. Full platform visibility and moderation. Solves the digital literacy barrier.
+Full system access, audit trail, moderation and dispute controls.
+Platform (HOBS Innovations)
+Earns platform charges on all transactions, manages surplus from funded campaigns.
+Revenue, platform integrity, long-term growth.
+3.2 Secondary and Future Stakeholders
+Stakeholder
+Interest
+Future Role in HOBSINN
+Municipal Authorities / HYSACAM
+Receive cleared waste at approved facilities, access analytics dashboards.
+Compliance data, incident volumes, coordination interface.
+Local Clinics and Health Centres
+Pollution-linked disease patterns.
+Receive environmental health advisories (UC5).
+Recycling Companies
+Waste stream categorisation and volume data.
+Digital pipeline integration (UC6).
+Drone Operators / TIES System
+Aerial waste detection.
+DroneObservationIngestor integration (UC4).
+NGOs and Environmental Advocates
+Policy evidence, public accountability.
+Analytics dashboard access, report downloads.
+MTN MoMo
+Payment infrastructure.
+PaymentGatewayAdapter — primary escrow mechanism.
+4. Research Methodology
+Data was collected using two structured Google Forms questionnaires distributed to distinct respondent groups — health personnel (n=6) and community / non-health personnel (n=21) — to capture both professional health perspectives and community-level sanitation perceptions.
+4.1 Survey Instruments
+Health Personnel Survey (n=6): https://docs.google.com/forms/d/e/1FAIpQLSdKiX3Y8ksJXgPUoFErBGdAoom5-laWM1vQNgxOFqjDT6k0g/viewform
+Community and Non-Health Personnel Survey (n=21): https://docs.google.com/forms/d/e/1FAIpQLScalXQTu07RBVn9zN2cxQ99eOCeW2tVu9PpUJP0sKjq78yPbA/viewform
+4.2 Respondent Profiles
+Attribute
+Health Personnel (n=6)
+Community (n=21)
+Professional Mix
+Nurses 33.3%, Lab Personnel 33.3%, Doctors 16.7%, Public Health 16.7%
+Students 85%, Nurse 5%, University Student 5%, Other 5%
+Age / Experience
+0–2 yrs 50%, 3–5 yrs 16.7%, 6–10 yrs 16.7%, 16+ yrs 16.7%
+18–24 years 95.2%, Under 18 4.8%
+Geography
+Southwest 83.3%, Northwest 16.7%
+Buea 84.2%, Douala 10.5%, Bamenda 5.3%
+Gender
+Not recorded
+Male 52.4%, Female 47.6%
+5. Survey Results and Design Implications
+Every result below is linked to a direct design decision. This traceability is deliberate — every major feature in HOBSINN is justifiable by data from this section, not by assumption.
+5.1 Community Cleanliness Perception (n=21)
+Rating
+Percentage
+Design Implication
+Very Clean
+4.8%
+—
+Clean
+19.0%
+—
+Average
+33.3%
+Citizen reporting tools for persistent low-grade pollution.
+Dirty
+19.0%
+Community cleanliness score derived from aggregated incident reports.
+Very Dirty
+23.8%
+Hotspot detection with zone-level broadcast notifications.
+5.2 Environmental Hygiene and Disease (n=20)
+Response
+Percentage
+Design Implication
+Yes — poor hygiene causes disease
+100%
+Health alerts and risk notifications are not controversial. Validates UC5 clinical module.
+5.3 Most Requested Improvement (n=21)
+Improvement
+Percentage
+Design Implication
+Regularity of waste collection
+57.1%
+UC1 and UC2 are the highest priority features. Must be the most polished workflows.
+Sorting accuracy
+19.0%
+Provider ratings and waste type tagging on requests.
+Safe hazardous waste disposal
+14.3%
+Future scope. Noted in system boundary exclusions.
+Smart monitoring and notification
+9.5%
+Validates notification subsystem as first-class architectural component.
+5.4 Disease Association with Dirty Environments (n=21)
+Disease
+Percentage
+Design Implication
+Malaria
+52.4%
+Priority scoring elevation for dumps near stagnant water / drainage zones.
+Cholera
+14.3%
+Dump reports near water sources flagged HIGH priority to ambassadors.
+Respiratory Problems
+9.5%
+Future UC5: PM2.5 and CO sensor readings tracked near dump locations.
+Skin Infections
+~9%
+—
+Diarrhoea
+5%
+—
+5.5 Willingness to Join Organised Cleanup if Notified (n=21)
+Likelihood
+Percentage
+Design Implication
+Very Likely
+19.0%
+Committed volunteer base. Always notify in advance.
+Likely
+28.6%
+Combined 47.6% willing — sufficient for Buea pilot campaigns.
+Not Sure
+33.3%
+Convertible via real-time funding progress and named ambassador validation.
+Unlikely
+19.0%
+—
+5.6 Most Effective Awareness Channel (n=21)
+Channel
+Percentage
+Design Implication
+Social Media
+42.9%
+Campaign shareable links, cleanup event social posts. Certificate sharing on completion.
+Community Meetings
+28.6%
+Ambassador role formalises this channel digitally.
+Door to Door
+19.0%
+Supported via ambassador broadcast notifications.
+Radio / TV
+9.5%
+Not in platform scope.
+6. User Behaviour Insights
+The barrier to participation is structural, not motivational. 100% recognise the danger yet only 23.8% always act. HOBSINN is the coordination mechanism that converts existing motivation into consistent behaviour.
+47.6% will join a cleanup if notified in advance. This is sufficient to run effective campaigns in Buea without requiring broad behaviour change.
+Social media at 42.9% in a 95.2% aged 18–24 user base means the platform's engagement strategy must be social-native. Push notifications alone are insufficient — certificates and campaign completions must be shareable.
+Malaria at 52.4% as the most cited disease implies stagnant water from waste is the community's primary concern. Dump clearance near drainage and water sources must receive elevated priority scores in the MatchingEngine.
+Health professionals respond to environmental data with direct action at 83.3%. They are platform advocates, not passive recipients.
+Buea at 84.2% of respondents confirms it as the correct pilot city and shapes initial ambassador and pickup user recruitment geography.
+7. User Personas
+Persona 1 — Home User: Amina (22, Student, Buea)
+Field
+Detail
+Profile
+Shares a house with 3 others. Uses WhatsApp daily, has MTN MoMo. Android smartphone.
+Goals
+Predictable weekly waste removal, clean house exterior, reduced disease risk.
+Challenges
+Trucks arrive irregularly with no forewarning, no way to request a specific time.
+Primary UCs
+UC1 (special call scheduling), UC2 (general slot), UC3 (campaign contribution and volunteering).
+Interaction
+Schedules pickups, pays via MoMo, volunteers for cleanups, earns badges and certificates.
+Persona 2 — Pickup User: Joseph (38, Truck Operator, Buea)
+Field
+Detail
+Profile
+Operates a pickup truck. Gets jobs through phone calls currently. Android smartphone.
+Goals
+Efficient schedule, guaranteed payment, minimum empty runs, transparent rating system.
+Challenges
+Jobs arrive irregularly, no organised timetable, occasional non-payment.
+Primary UCs
+UC1 and UC2 — service delivery side. Accepts special calls and registers for general slots.
+Interaction
+Views special calls, accepts jobs, manages calendar, confirms completion with photo, receives escrow payment.
+Persona 3 — Ambassador: Mr. Ndikum (45, Quarter Head, Buea peri-urban)
+Field
+Detail
+Profile
+Recognised community authority. Uses WhatsApp groups. Basic smartphone.
+Goals
+Coordinate cleanups effectively, ensure funds are used legitimately, earn community recognition.
+Challenges
+No digital coordination tools, relies on phone calls and physical meetings.
+Primary UCs
+UC3 — validation of dump reports and dirty environment reports, coordination of all campaigns in area.
+Interaction
+Validates reports, inputs measurements and pricing configurations, coordinates pickups for major dumps, scans QR attendance codes, issues certificates.
+Persona 4 — Healthcare Professional: Dr. Fon (28, Nurse, Southwest Region)
+Field
+Detail
+Profile
+0–2 years experience. Sees respiratory and malaria cases. Suspects environmental link but has no data.
+Goals
+Understand pollution patterns, anticipate disease spikes, advise patients.
+Primary UCs
+UC5 (Future) — Clinical Environmental Dashboard.
+Interaction
+Reads environmental health dashboard, receives area risk alerts.
+8. Research-to-Feature Mapping
+Research Finding
+System Feature
+Use Case
+57.1% demand regular, reliable waste collection
+Special call scheduling with confirmed timeslot and pickup user name; general recurring slot system
+UC1, UC2
+42.8% live in dirty or very dirty communities
+Citizen incident reporting, dirty environment reporting, hotspot heatmap
+UC3
+100% link poor hygiene to disease
+Environmental health alert notifications; future clinical dashboard
+UC1-UC3, UC5
+Malaria 52.4%, Cholera 14.3%
+Priority scoring elevation for dumps near water/drainage in MatchingEngine
+UC3
+47.6% will join cleanup if notified
+Advance campaign notifications with real-time volunteer count and name list
+UC3
+33.3% unsure about contributing
+Named ambassador validation, transparent funding progress, before/after evidence, leaderboard
+UC3
+Social media 42.9% most effective
+Shareable certificate links, shareable campaign completion posts
+All
+80% would act on real-time health alert
+Notification subsystem as first-class architectural component
+All
+95.2% aged 18–24
+Mobile-first, social-native design, gamification via badges and certificates
+All
+Low digital literacy
+System Admin creates/manages accounts; customer service fallback
+All
+9. Existing Systems Review
+System
+Strengths
+Weaknesses
+HOBSINN's Response
+Municipal Collection
+Legal authority, policy reach, scale
+Irregular schedules, poor peri-urban coverage, funding-limited
+Structured scheduling layer on top of existing operators
+HYSACAM (Private)
+Organised, trained personnel, scheduled routes
+Urban-only, depends on municipal contract, no recycling
+End destination for cleared major dumps
+Informal Collectors
+Household-level reach, recycling contribution
+Unsafe, uncoordinated, not integrated
+Onboarding path into pickup user registry
+Community Initiatives
+Local trust, participation
+No digital tools, no budget, no scale
+Campaign and cleanup coordination infrastructure
+WhatsApp Coordination
+Accessible, instant, familiar
+No records, no payments, no accountability
+Replaced with structured platform maintaining mobile familiarity
+10. Internal Developer Audit Questions
+10.1 Architecture
+Why five tiers? The separation between data acquisition and backend prevents future drone or sensor data pipelines from mixing with business logic. Adding UC4 slots into the acquisition tier with no changes to existing services.
+Why a monorepo? Shared event schemas, domain objects, and build tooling are version-controlled together. Services that share the common-events library always use the same event contracts.
+Why Kafka over a simpler queue? The TIES prototype already uses Kafka. UC4 integration requires subscribing to a Kafka topic. Using Kafka from day one avoids a migration step.
+Why the transactional outbox pattern? Without it, a business transaction can commit to the database while the Kafka publish fails. The outbox guarantees at-least-once event delivery with no lost events.
+Why does every actor inherit from home user? Every person using the system has a home. The home user is the base class — pickup users and ambassadors extend it. This eliminates duplication and makes permission escalation explicit.
+10.2 Data and Privacy
+How is patient data handled in UC5? Clinical data is ingested only as anonymised aggregates — disease incidence counts per geographic zone per time period. No individual patient records are ever stored or processed by HOBSINN.
+What data is retained and for how long? Operational data: 24 months then archived. Geospatial environmental data: indefinitely for analytics. User identity: retained while account is active and 12 months post-deletion for audit.
+10.3 Infrastructure — The 12-Factor Scale Design
+All 12 scalability factors identified in the infrastructure brief are addressed in this system design:
+Horizontal vs. Vertical Scaling: All application-tier services are stateless. Scale horizontally by adding instances behind the API Gateway load balancer. No vertical scaling required.
+Load Balancing: API Gateway distributes traffic across all service instances. Kubernetes LoadBalancer service exposes only the gateway externally.
+Stateless Architecture: Services hold no session state. All state lives in PostgreSQL, Kafka, or Redis. Any instance can handle any request at any time.
+Database Sharding and Partitioning: PostgreSQL read replicas for analytics queries. TimescaleDB hypertables for sensor time-series data (UC5). Future horizontal sharding by geographic zone.
+Caching Strategies: Redis 7.2-alpine for rate limiting and session token cache in the API Gateway. CDN for static assets and campaign images.
+Asynchronous Processing: All cross-service communication via Kafka topics. Heavy operations (hotspot detection, reconciliation, certificate generation) are async and never block user-facing responses.
+Microservices and Decomposition: Nine independent services — each deployable without restarting others. PaymentService can scale independently during campaign funding surges.
+Database Replication: PostgreSQL read replica serves analytics-service and admin dashboard queries, isolating read traffic from transactional writes.
+Auto-Scaling and Elasticity: Kubernetes HorizontalPodAutoscaler scales on CPU (70% target) and custom Kafka consumer lag metric. Cloud resources auto-scale via Terraform IaC.
+Service Discovery: Kubernetes DNS-based service discovery for all internal service-to-service communication. No hardcoded service addresses.
+Consistent Hashing: Redis cluster uses consistent hashing for distributed cache key distribution. Kafka partition assignment uses consistent hashing for consumer group load balancing.
+Circuit Breakers: Spring Cloud Circuit Breaker wraps all inter-service HTTP calls and MoMo gateway calls. 503 responses with Retry-After headers instead of cascading failures.
+10.4 AI and Analytics
+What AI is needed for UC1, UC2, and UC3? The MatchingEngine uses a weighted scoring algorithm, not ML. The HotspotDetector uses DBSCAN spatial clustering. The optional bag volume estimator uses a computer vision model. Analytics metrics are computed aggregation queries.
+How do we complete implementation in under 24 hours? Solo relay implementation using Claude Code instances. Each instance receives a precise handoff document specifying exact files completed, current state, and exact next tasks with no ambiguity.
+How do we keep up with AI-generated code and ensure reliability? All AI-generated code passes through CI/CD with automated tests. DevOps monitoring dashboards provide real-time reliability signals.
+11. Functional Requirements
+ID
+Requirement
+Use Case
+Service
+FR-01
+User registers with phone number, authenticates, and manages profile. System Admin can create/manage any account.
+All
+user-service
+FR-02
+Home user schedules a special call pickup with custom time, GPS location, and bag count (with optional AI image volume estimation).
+UC1
+scheduling-service
+FR-03
+Platform charges: total cost = estimated cost + 100 XAF + (5% of estimated cost if estimated cost > 1100 XAF).
+UC1
+scheduling-service / payment-service
+FR-04
+System matches special call to best available pickup user using MatchingEngine scoring. All pickups can view unmatched requests.
+UC1
+scheduling-service / MatchingEngine
+FR-05
+Payment via MTN MoMo must be confirmed at least 1 hour before agreed time. Failure cancels request and degrades home user badge.
+UC1
+payment-service
+FR-06
+Pickup user rated on 100% composite score: Punctuality 40%, Job Completed Status 30%, Customer Rating (6-star = 30%).
+UC1
+provider-service
+FR-07
+Pickup user is late penalty: -25% punctuality score per 5 minutes late. After 20 minutes → request REASSIGNED.
+UC1
+scheduling-service
+FR-08
+Job completion requires pickup user to submit photo of waste being collected. Home user acknowledges arrival (CONFIRMED → IN_PROGRESS). Photo submission triggers IN_PROGRESS → COMPLETED.
+UC1
+scheduling-service
+FR-09
+General pickup: home user registers for a weekly slot and estimates bag count. Pickup user registers for a monthly slot. Pricing adjusts based on aggregated capacity from all registered users in that slot.
+UC2
+scheduling-service
+FR-10
+Major dump reporting requires GPS location at dump site, textual description, and photo. Sent only to ambassador for validation with estimated measurements (area × height = volume).
+UC3
+reporting-service
+FR-11
+Major dump cost = (estimated amount = amount per m³ × volume) + 5000 XAF + (10% of estimated amount if > 25,000 XAF). Platform keeps 5000 XAF and 10%.
+UC3
+campaign-service / CostEstimationModule
+FR-12
+After ambassador validation, dump job posted to pickup user Services → Dump Cleanups. First 3 pickup users to register claim the job. Job disappears from listing when 3 are registered.
+UC3
+campaign-service
+FR-13
+Ambassador contacts and can remove pickup users from dump cleanup before job transitions to CONFIGURED (within 3 days of validation).
+UC3
+campaign-service
+FR-14
+Funded dump campaign: ambassador must start cleanup within 10 days or loses 10% fee and receives badge degradation.
+UC3
+campaign-service
+FR-15
+Campaign completion: ambassador submits before/after photos and a short celebration text. Posted to notification service → email and shareable links.
+UC3
+campaign-service
+FR-16
+Dirty environment reporting: home user must be at location. Severity rating: AVERAGE / DIRTY / DIRTY LV1 / DIRTY LV2 / DIRTY LV3. Ambassador validates with photo, area estimate, and contact.
+UC3
+reporting-service
+FR-17
+Dirty environment volunteer cleanup: 29-day open registration window. Volunteers provide real name and commitment date (7-day span). Ambassador acknowledges to move to IN SESSION within 1 day after registration closes.
+UC3
+reporting-service
+FR-18
+QR-code attendance tracking for cleanup events. Each attendee scans QR code. System auto-marks attendance. Completed attendees receive digital certificate with name, date, place, and volunteer type.
+UC3
+reporting-service / notification-service
+FR-19
+Health/sensitisation campaigns: ambassador validates with flyer or blank. Posted on Campaigns for home users to view and mark calendar (consult action).
+UC3
+campaign-service
+FR-20
+Hotspot detection engine clusters incident reports using DBSCAN. Notifications dispatched to ambassadors and home users in affected zones.
+UC3
+reporting-service / HotspotDetector
+FR-21
+Home user calendar aggregates all events: pickup requests, volunteer commitments, health campaigns, upcoming scheduled events. Client-side caching enables offline notification.
+All
+notification-service / mobile app
+FR-22
+Badging system for all users. Pickup users: rating (6-star, job-derived) + badges. Home users: badges for volunteering, reporting, contributions. Ambassadors: badges and bragging rights for validation milestones.
+All
+user-service / provider-service
+FR-23
+Campaign funding leaderboard shows contributors ranked by amount for motivation and gamification. Overflow funding is platform profit.
+UC3
+campaign-service
+FR-24
+Integration interfaces reserved for UC4 (drone), UC5 (sensor), UC6 (recycling).
+Future
+data-acquisition-tier stubs
+12. Non-Functional Requirements — The 12-Factor Scale Design
+Category
+Requirement
+Target Metric
+Scale Factor
+Performance
+API response for core scheduling and campaign operations
+< 2 seconds at p95 under normal load
+Caching, async processing, GIST indexes
+Availability
+Payment and scheduling endpoints
+> 99% uptime
+Circuit breakers, auto-restart, health probes
+Scalability
+Application tier horizontal scaling
+10x load increase without redesign
+Stateless services, HPA, Kafka decoupling
+Reliability — Payments
+Payment operations
+Idempotent always. Zero duplicate charges.
+Idempotency keys, outbox pattern, reconciliation job
+Reliability — Events
+Kafka event delivery
+At-least-once via transactional outbox pattern
+OutboxPublisher with retry and dead-letter
+Security — Transport
+All API traffic
+TLS 1.2+ on all endpoints
+API Gateway TLS termination
+Security — Auth
+Authentication
+JWT HS512, 24h access / 7d refresh, RBAC at service layer
+Spring Security, role claims in JWT
+Accessibility
+Low-bandwidth mobile support
+Core flows functional on 2G / 100 kbps
+Lazy-loading, client-side caching, offline drafts
+Localisation
+Language support
+English and French throughout all UI and notification templates
+Bilingual string resources, preferredLanguage in JWT
+Maintainability
+Service independence
+Each service deployable independently without restarting others
+Docker/K8s independent deployments
+Extensibility
+UC4/UC5/UC6 integration
+Defined adapter interfaces. No structural changes to existing services required.
+Interface contracts in shared/common-events
+Observability
+Service health
+Prometheus metrics and /actuator/health on all services
+Grafana dashboards with Slack/Discord alerts
+13. Risk Analysis
+Risk
+P
+I
+Description
+Mitigation
+Payment gateway downtime
+M
+H
+MTN MoMo API unavailable, blocking job confirmation
+Idempotent retry queue, pending state UI, reconciliation job every 15 min
+Pickup user no-show after job confirmed
+M
+H
+Pickup user arrives late or fails to appear, eroding home user trust
+Grace period check every 5 min, -25% punctuality per 5 min late, cascade reassignment after 20 min
+Fraudulent dump reports
+L
+H
+Bad actors create fake reports to extract campaign funds
+Ambassador mandatory physical validation, GPS requirement at location, photo evidence, escrow-only release
+Low adoption at launch
+M
+H
+Insufficient user base for effective pickup matching in Buea
+University partnerships, social media campaign, referral incentives, system admin phone-based onboarding
+Connectivity failures in peri-urban zones
+H
+M
+Users unable to submit reports or complete payments
+Offline draft queuing in mobile app, client-side calendar caching, SMS fallback for critical notifications, customer service hotline
+Ambassador coordination failure
+M
+H
+Ambassador does not validate within deadlines, campaigns stall
+10-day completion window enforced. Ambassador loses fee and badge score if deadline missed. Automated escalation to system admin.
+Sprint scope creep into UC4/UC5/UC6
+H
+M
+Team attempts drone, sensor, or recycling features during hackathon
+Strict sprint gate: UC4/UC5/UC6 interfaces scaffolded only, zero implementation
+Solo implementation bottleneck
+H
+H
+One-person relay implementation falls behind or loses state
+Precise handoff documents between Claude Code instances. Each instance documents exactly what was completed and the exact next step.
+CI/CD pipeline too slow
+H
+M
+Pipelines taking > 15 min block the relay implementation cycle
+Gradle dependency caching, parallel test execution, --no-daemon builds. Target: < 8 minutes per service.
+JWT secret too short
+L
+H
+Spring Boot HS512 requires minimum 64 characters. Shorter secret causes startup failure.
+Generate with: openssl rand -base64 48. Enforce minimum length check in startup.
+14. Feasibility Analysis
+Use Case
+Technical
+Economic
+Sprint Deliverable
+UC1: Special Call Scheduling
+Yes
+Low — Cloud VM + managed DB + MoMo sandbox API
+Fully deliverable
+UC2: General Slot System
+Yes
+Same infra as UC1
+Fully deliverable
+UC3: Reporting and Campaign Services
+Yes
+Same infra plus object storage for photos and QR code generation
+Core flow deliverable. Certificate generation and QR attendance in sprint.
+UC4: Drone Monitoring (TIES)
+Yes — TIES prototype exists
+Drone hardware cost + cloud GPU for CV inference
+Architecture defined. Interfaces scaffolded. Implementation post-hackathon.
+UC5: Clinical Sensors
+Yes — ESP32 + LoRaWAN proven
+Sensor nodes ~70–120 USD each + clinical partnerships required
+Architecture defined. Not deliverable in sprint timeframe.
+UC6: Recycling Pipeline
+Yes
+Depends on recycling company partnerships
+Architecture defined. Not deliverable in sprint timeframe.
+PART TWO — DESIGN PHASE
+15. Architectural Philosophy and System Overview
+HOBSINN is not a reporting application. It is a coordination platform that closes the loop from problem detection through resource mobilisation, service execution, and verified resolution. The architecture reflects this completeness.
+Four principles govern every design decision. Deployability now: the system must function today with existing infrastructure, existing payment methods, and existing operators. Extensibility by design: every interface that UC4, UC5, and UC6 will consume is defined now, even though those consumers do not yet exist. Strict separation of concerns: each tier, each service, and each class has one reason to exist. Trust through transparency: every financial transaction, every status transition, and every campaign milestone must be auditable by the involved parties.
+The actor inheritance model is a key architectural principle: every user first IS a home user. The pickup user extends the home user. The ambassador extends the home user. This is enforced at the data model, API, and UI layers. A pickup user cannot see his or her own pickup requests as a client.
+15.1 System Boundary
+HOBSINN coordinates service delivery between home users, pickup users, ambassadors, and payment infrastructure. It does not physically collect waste, process medical waste, operate drones in the current phase, or manage industrial waste. These exclusions are deliberate boundary decisions that keep the system focused and legally clear.
+15.2 Technology Stack
+Layer
+Technology
+Rationale
+Backend services
+Kotlin + Java 21 / Spring Boot 3.2
+Consistent with TIES prototype. Strong typing, mature ecosystem, Spring Security for RBAC.
+Primary database
+PostgreSQL 15 + PostGIS 3.4
+ACID, native geospatial types, JSON support, proven at scale. Required for pickup zone polygons and location queries.
+Analytics store
+MongoDB 6.0
+Flexible schema for aggregated metrics. No geospatial join load on transactional DB.
+Event bus
+Apache Kafka (Confluent 7.5)
+Durable event log, topic-per-domain architecture, direct compatibility with TIES Kafka infrastructure.
+Service container
+Docker + Docker Compose (dev) / Kubernetes (prod)
+Consistent environments, independent service scaling, health checks.
+Mobile app
+Kotlin / Android (hobsinn)
+Native Android for pilot. React Native for cross-platform scale after hackathon.
+Admin dashboard
+React + TypeScript
+Component reuse, strong typing, mature ecosystem.
+AI / Analytics
+Python 3.11 + scikit-learn + pandas + GeoPandas
+Standard data science stack with PostGIS integration.
+Vision module
+TensorFlow Lite (on-device)
+Bag volume estimation from camera image — runs on device to avoid network dependency.
+Build system
+Gradle 8.5 multi-project (Kotlin DSL)
+Monorepo build with shared dependency management across all services.
+CI/CD
+GitHub Actions
+Free for the project, YAML-defined pipelines, Docker build and deploy stages.
+Schema migration
+Flyway
+Versioned SQL migration files. Every schema change tracked, reversible, environment-consistent.
+Cache / Rate limiting
+Redis 7.2-alpine
+API Gateway rate limiting and session token cache.
+Observability
+Prometheus + Grafana
+Service health, queue depth, payment status, error rates in one dashboard.
+API documentation
+OpenAPI 3.0 via SpringDoc
+Auto-generated from Spring Boot annotations at /swagger-ui on each service.
+QR Code generation
+ZXing (Zebra Crossing)
+Java/Kotlin library for generating and scanning QR codes for cleanup attendance tracking.
+Certificate generation
+iText / Apache PDFBox
+PDF generation for volunteer and cleanup certificates.
+16. Five-Tier Architecture
+Tier
+Name
+Responsibility
+Current Components
+Future Components
+1
+Data Acquisition
+All data entry into the system: user inputs, future drone feeds, future sensor streams
+Mobile app input validation, image upload intake, payment webhook ingestor, bag photo intake
+DroneObservationIngestor (UC4), SensorStreamAdapter (UC5), MQTT broker, RecyclingPickupIngestor (UC6)
+2
+Network and Communication
+Secure transport, API gateway, notification dispatch, event bus
+API Gateway (port 8080), JWT auth, rate limiting, Kafka topics, NotificationService, SMS + FCM adapters
+MQTT gateway for sensor nodes
+3
+Backend and Application
+Core business logic for all three use case families
+UserService (8086), SchedulingService (8081), CampaignService (8082), ReportingService (8083), PaymentService (8084), NotificationService (8085), ProviderService (8087), AnalyticsService (8088)
+DroneReportProcessor, SensorCorrelationService, RecyclingCoordinatorService
+4
+AI and Analytics
+Pattern detection, scoring, clustering, vision, future prediction models
+MatchingEngine (scoring), HotspotDetector (DBSCAN), BagVolumeEstimator (TFLite), AnalyticsAggregator, MongoDB analytics store
+WasteSpreadPredictor, ClinicalCorrelationEngine, SensorAnomalyDetector
+5
+UI/UX and Presentation
+All user-facing interfaces
+HOBSINN Android app (home user, pickup user, ambassador views), Admin Dashboard (React), Provider App flows
+Environmental Health Dashboard (UC5), Drone Monitoring View (UC4), Recycling Pipeline Dashboard (UC6)
+17. Monorepo and Module Structure
+The entire platform lives in a single Git repository named 'hobsinn' (github.com/hobsinnovations/hobsinn). This ensures shared event schemas and domain types are always version-consistent across services.
+hobsinn/
+  settings.gradle.kts — Gradle multi-project build root
+  build.gradle.kts — Shared dependency versions and plugin config
+  docker-compose.yml — Full local dev stack (9 services + infra)
+  .github/workflows/ — CI/CD pipeline definitions
+  infrastructure/ — terraform/, kubernetes/, docker/
+  shared/ — common-events/, common-domain/, common-utils/
+  services/ — api-gateway/, user-service/, scheduling-service/, campaign-service/, reporting-service/, payment-service/, notification-service/, provider-service/, analytics-service/
+  mobile/hobsinn-android/ — Kotlin Android app
+  dashboard/hobsinn-admin/ — React + TypeScript admin UI
+  data-pipeline/ — hotspot-detector/, matching-engine/, analytics-aggregator/
+  scripts/ — Local dev, seeding, migration, QR, certificate generation helpers
+18. Data Acquisition Tier
+18.1 Current Phase — User-Generated Inputs
+Input Channel
+Validation Rules
+Destination
+Special call pickup form
+GPS at client location required. Bag count > 0. Time must be > 1 hour in future. Optional: bag photos for AI volume estimation.
+scheduling-service createSpecialCallRequest()
+General slot registration (home user)
+Valid slot selected from system-generated weekly slots. Bag count estimate required.
+scheduling-service registerGeneralSlot()
+General slot registration (pickup user)
+Valid slot selected. Capacity declared (wagon/bike/tricycle/pickup truck). Confirmed by ambassador.
+provider-service registerPickupSlot()
+Major dump report
+GPS location required (user must be on-site). Photo: max 5 images ≤ 5 MB each. Volume estimate from ambassador.
+reporting-service submitDumpReport()
+Dirty environment report
+GPS at location. Severity: AVERAGE/DIRTY/DIRTY LV1/DIRTY LV2/DIRTY LV3. Optional single image ≤ 3 MB.
+reporting-service submitIncidentReport()
+Bag photo for volume estimation
+JPEG/PNG ≤ 5 MB. Sent to BagVolumeEstimator (TFLite). Returns volume estimate in litres.
+AI module → scheduling-service
+Payment webhook (MoMo)
+HMAC signature verification. Idempotency: gatewayTransactionId must be unique.
+payment-service handleWebhookConfirmation()
+QR code attendance scan
+Ambassador scans attendee QR. System auto-marks attendance. Offline scan queued for sync.
+reporting-service recordAttendance()
+18.2 Future Phase — Autonomous Data Sources
+Adapter
+Protocol
+Event Produced
+Trigger
+DroneObservationIngestor
+Kafka consumer on gar.drone.events topic (TIES Kafka)
+DroneObservationReceivedEvent → DumpReport (source=SYSTEM) if confidence ≥ threshold
+UC4 post-hackathon integration with github.com/osvald-27/ties
+SensorStreamAdapter
+MQTT subscriber on sensor/+/readings topic
+SensorReadingReceivedEvent → TimescaleDB
+UC5 post-hackathon ESP32 sensor network deployment
+RecyclingPickupIngestor
+REST webhook from recycling company partners
+RecyclingRequestReceivedEvent → RecyclingCoordinatorService
+UC6 post-hackathon recycling pipeline
+19. Network and Communication Tier
+19.1 API Gateway — Port 8080
+The API Gateway is the single external entry point. It handles TLS termination, JWT token validation, rate limiting (100 req/min per authenticated user, 20 req/min unauthenticated), request routing to downstream services, and structured access logging. It contains no business logic.
+19.2 Authentication and Authorisation
+JWT tokens are issued by user-service using HS512 signing with a 64-character minimum secret key. Access tokens expire in 24 hours. Refresh tokens expire in 7 days and are rotated on use. Token payload carries userId (UUID), roles (List<String>), and preferredLanguage.
+Role
+Permitted Endpoints
+HOME_USER
+POST /pickups/special-call, POST /pickups/general-slot, POST /dump-reports, POST /incident-reports, GET /campaigns, POST /campaigns/{id}/volunteer, POST /campaigns/{id}/contribute, GET /calendar
+PICKUP_USER (extends HOME_USER)
+All HOME_USER endpoints. GET /jobs/special-calls, POST /jobs/{id}/accept, GET /general-slots, POST /general-slots/{id}/register, GET /ongoing, PUT /jobs/{id}/start, PUT /jobs/{id}/complete
+AMBASSADOR (extends HOME_USER)
+All HOME_USER endpoints. GET /reports/pending, PUT /reports/{id}/validate, PUT /reports/{id}/reject, PUT /campaigns/{id}/configure, POST /cleanup-events/{id}/attend-qr, GET /campaigns/{id}/volunteers
+SYSTEM_ADMINISTRATOR
+ALL endpoints including DELETE and system configuration. Can create/manage any user account.
+19.3 Kafka Topic Architecture
+Topic
+Producers
+Consumers
+Key Events
+gar.pickup.events
+scheduling-service
+notification-service, analytics-service
+SpecialCallCreated, PickupMatched, PickupConfirmed, JobStarted, JobCompleted, JobCancelled, JobReassigned, GeneralSlotRegistered
+gar.campaign.events
+campaign-service
+notification-service, analytics-service
+DumpCampaignConfigured, DumpCampaignPublished, DumpCampaignFunded, DumpCampaignInProgress, DumpCampaignCompleted, CleanupCampaignOpen, CleanupInSession, CleanupCompleted, HealthCampaignPosted
+gar.reporting.events
+reporting-service
+campaign-service, notification-service, analytics-service
+DumpReportSubmitted, DumpReportValidated, DumpReportRejected, IncidentSubmitted, HotspotDetected, AttendanceRecorded, CertificateIssued
+gar.payment.events
+payment-service
+scheduling-service, campaign-service, notification-service
+PaymentInitiated, PaymentConfirmed, PaymentFailed, EscrowReleased, RefundProcessed
+gar.notification.events
+all services
+notification-service
+Broadcast notification requests
+gar.provider.events
+provider-service
+scheduling-service (MatchingEngine cache)
+PickupRegistered, SlotRegistered, ReliabilityUpdated, CapacityChanged, VehicleVerified
+gar.user.events
+user-service
+notification-service, analytics-service
+UserRegistered, BadgeAwarded, BadgeDegraded
+gar.drone.events (future)
+TIES DroneObservationIngestor
+reporting-service
+DroneObservationReceived
+gar.sensor.events (future)
+SensorStreamAdapter
+analytics-service
+SensorReadingReceived
+19.4 Transactional Outbox Pattern
+All services that publish Kafka events use the transactional outbox pattern. When a business operation commits to PostgreSQL, the event is written to the outbox_events table in the same database transaction — not sent directly to Kafka. A background OutboxPublisher polls the table every 2 seconds, sends pending events to Kafka, and marks them PUBLISHED. Maximum retry count is 5 before the event is marked FAILED.
+19.5 Notification Service
+NotificationService is a Kafka consumer subscribed to all event topics. It resolves the delivery channel per recipient (FCM push if device token exists, SMS via Twilio or local telecom gateway as fallback), renders the correct language template (English or French), and dispatches asynchronously. Client-side calendar caching enables notifications to surface offline. A notification failure never blocks a business transaction.
+20. Backend and Application Tier — Service Registry
+Service
+Port
+Database
+Kafka Role
+Core Responsibility
+api-gateway
+8080
+None
+None
+TLS, JWT validation, rate limiting, routing
+user-service
+8086
+PostgreSQL (users, user_roles, refresh_tokens)
+Producer: gar.user.events
+Registration, auth, JWT issuance, role management, badge management
+scheduling-service
+8081
+PostgreSQL (pickup_requests, general_slots, provider_schedule_slots, status_transitions, outbox_events)
+Producer: gar.pickup.events; Consumer: gar.payment.events
+UC1 and UC2 full lifecycle: special call, general slot, matching orchestration, state machine, reassignment
+campaign-service
+8082
+PostgreSQL (dump_campaigns, dump_pickup_registrations, campaign_contributions, cleanup_campaigns, volunteer_registrations, health_campaigns, outbox_events)
+Producer: gar.campaign.events; Consumer: gar.reporting.events, gar.payment.events
+UC3: dump campaign lifecycle, cleanup campaign lifecycle, health campaign posting, leaderboard, certificate coordination
+reporting-service
+8083
+PostgreSQL (dump_reports, incident_reports, hotspots, hotspot_reports, cleanup_attendances, outbox_events)
+Producer: gar.reporting.events
+UC3: dump/incident report intake, deduplication, hotspot detection, QR attendance, certificate trigger
+payment-service
+8084
+PostgreSQL (transactions, outbox_events)
+Producer: gar.payment.events; Consumer: gar.pickup.events, gar.campaign.events
+MoMo escrow initiation, webhook handling, idempotency, escrow release, refund, 15-min reconciliation job
+notification-service
+8085
+PostgreSQL (notification_delivery_log)
+Consumer: all topics
+FCM push and SMS dispatch, template rendering, geographic broadcast, certificate email dispatch, retry with backoff
+provider-service
+8087
+PostgreSQL (pickup_users, vehicle_types, general_slot_subscriptions)
+Producer: gar.provider.events
+Pickup user registry, vehicle type and capacity management, slot subscription, reliability score update, ambassador-confirmed capacity changes
+analytics-service
+8088
+PostgreSQL (read) + MongoDB (hobsinn_analytics)
+Consumer: all event topics
+Operational metrics aggregation, hotspot trend data, provider performance indices, campaign success rates — written to MongoDB for dashboard consumption
+21. Backend and Application Tier — Service Specifications
+21.1 SchedulingService — Special Call (UC1)
+Method
+Input
+Output
+Side Effects
+createSpecialCallRequest()
+userId, lat/lng, bagCount, bagPhotos (optional), requestedDateTime
+PickupRequest (PENDING)
+Calls BagVolumeEstimator if photos provided. Calculates cost. Saves request. Publishes SpecialCallCreatedEvent. Triggers MatchingEngine.
+attemptMatching()
+PickupRequest, GeoPoint, requestedDateTime
+void (updates request)
+Calls MatchingEngine.findMatches(). Notifies biased pickups. All pickups can view. On acceptance: transitions to MATCHED. Publishes PickupMatchedEvent.
+confirmPayment()
+requestId, transactionId, gatewayTxId
+PickupRequest (CONFIRMED)
+Validates payment received ≥ 1hr before agreed time. Transitions to CONFIRMED. Publishes PickupConfirmedEvent.
+startJob()
+requestId, providerId
+PickupRequest (IN_PROGRESS)
+Home user acknowledges pickup user arrival. Validates provider identity. Transitions to IN_PROGRESS. Publishes JobStartedEvent.
+completeJob()
+requestId, providerId, completionPhotoKey
+PickupRequest (COMPLETED)
+Pickup user submits waste photo. Stores evidence. Transitions to COMPLETED. Publishes JobCompletedEvent (includes transactionId for escrow release).
+triggerReassignment()
+requestId, reason
+PickupRequest (REASSIGNING)
+Called after 20-min late penalty or cancellation. Clears assignedProviderId. Transitions to REASSIGNING. Re-invokes attemptMatching(). Publishes JobReassignedEvent.
+21.2 MatchingEngine
+Read-only component. No writes to any table. No side effects. Depends on ProviderRepository and SlotRepository as injected interfaces. Fully unit-testable with mock repositories.
+Method
+Logic Summary
+findMatches(location, requestedTime, constraints)
+1. Query pickup users whose service zone contains or is near the request point (PostGIS ST_DWithin, 25km). 2. Filter by capacity and vehicle type constraints. 3. Check availability at requested time. 4. Score each candidate using computeScore(). 5. Filter below minAcceptableScore (0.30). 6. Notify biased (top 3) candidates with priority push. 7. Return ranked list visible to all.
+computeScore(pickupUser, request)
+compositeScore = (0.40 × distanceScore) + (0.35 × reliabilityScore) + (0.15 × capacityScore) + (0.10 × workloadScore). All weights configurable in matching_config table.
+haversineDistanceKm(lat1, lon1, lat2, lon2)
+Standard haversine formula. Earth radius 6371 km. Returns Double.
+21.3 CampaignService
+Method
+Input
+Output
+Side Effects
+configureDumpCampaign()
+reportId (validated DumpReport), ambassadorConfig (pickup percentages, contact)
+DumpCampaign (CONFIGURED)
+Validates ≤ 3 pickup users registered. Ambassador inputs payment percentages. Transitions to CONFIGURED after 3 days. Publishes DumpCampaignConfiguredEvent.
+publishDumpCampaign()
+campaignId
+DumpCampaign (PUBLISHED)
+Calculates cost via CostEstimationModule. Posts to all home users. Publishes DumpCampaignPublishedEvent.
+addContribution()
+campaignId, userId, amount, paymentRef
+CampaignContribution
+Validates campaign is PUBLISHED. Adds to leaderboard. Checks isFunded(). If funded: transitions to FUNDED. Publishes DumpCampaignFundedEvent.
+acknowledgeJobStart()
+campaignId, ambassadorId
+DumpCampaign (IN_PROGRESS)
+Ambassador acknowledges physical start. Transitions FUNDED → IN_PROGRESS. Publishes DumpCampaignInProgressEvent.
+completeDumpCampaign()
+campaignId, finalPickupPercentages, afterPhotoKey, celebrationText
+DumpCampaign (COMPLETED)
+Stores evidence. Posts celebration notification. Publishes DumpCampaignCompletedEvent (triggers escrow release). Ambassador badge updated significantly.
+openCleanupCampaign()
+reportId (validated incident), ambassadorId
+CleanupCampaign (OPEN)
+Opens 29-day volunteer window. Publishes CleanupCampaignOpenEvent.
+acknowledgeCleanupSession()
+campaignId, ambassadorId, scheduledDate
+CleanupCampaign (IN_SESSION)
+Ambassador acknowledges session within 1 day after 29-day window. Schedules cleanup within 7-day span voted by community. Publishes CleanupInSessionEvent.
+completeCleanupCampaign()
+campaignId, attendanceList, photoKey
+CleanupCampaign (COMPLETED)
+Marks attended volunteers. Triggers certificate generation for each. Publishes CleanupCompletedEvent. CertificateService generates and emails PDFs.
+21.4 CostEstimationModule — Dump Campaigns
+Stateless. No constructor dependencies. No database access. Pure function.
+estimatedAmount = amountPerMeterCubed × volumeM3
+platformFee = 5000 XAF + (10% × estimatedAmount if estimatedAmount > 25,000 XAF)
+totalCost = estimatedAmount + platformFee
+Ambassador earns 10% of estimatedAmount. The 90% remainder is split among pickup users per ambassador-configured percentages.
+21.5 PaymentService
+Method
+Logic Summary
+initiatePayment()
+Check idempotencyKey for existing transaction. If found, return existing. Call gatewayAdapter.initiateEscrow(). Write Transaction (INITIATED). Publish PaymentInitiatedEvent.
+handleWebhookConfirmation()
+Find transaction by gatewayTransactionId. If already CONFIRMED, return idempotently. On SUCCESSFUL: set status=CONFIRMED, settledAt=now, publish PaymentConfirmedEvent. On FAILED: set status=FAILED, publish PaymentFailedEvent.
+releaseEscrow()
+Validate transaction is CONFIRMED. Call gatewayAdapter.releaseEscrow(). Set status=RELEASED, payeeUserId, settledAt. Platform keeps its cut before release.
+processRefund()
+Validate status is CONFIRMED or PENDING. Call gatewayAdapter.refund(). Set status=REFUNDED. Platform charges (100 XAF + 5%) are retained on cancellations triggered by home user within 1-hour danger zone.
+reconcilePendingTransactions() @Scheduled(15 min)
+Find all PENDING transactions older than 5 minutes. Call gatewayAdapter.verifyStatus() for each. Handle result as webhook confirmation. Increment retryCount on exception.
+21.6 ReportingService
+Method
+Logic Summary
+submitDumpReport()
+Validate GPS location provided. Check for duplicates within 500m radius. Save DumpReport (source=USER, status=PENDING_VALIDATION). Publish DumpReportSubmittedEvent. Ambassador notified.
+validateDumpReport()
+Ambassador inputs photo, area estimate, height, contact. Set validationStatus=VALIDATED. Publish DumpReportValidatedEvent. CampaignService opens pickup registration window for 3 days.
+submitIncidentReport()
+Validate GeoPoint. Save IncidentReport with severity. Publish IncidentSubmittedEvent. Call runHotspotDetectionForZone() if nearby reports ≥ 3.
+validateIncidentReport()
+Ambassador inputs photo, area estimate, contact. Set validationStatus=VALIDATED. Publish IncidentReportValidatedEvent. CampaignService opens 29-day volunteer window.
+recordAttendance()
+Ambassador scans QR code. System finds volunteer by QR token. Marks as ATTENDED. If offline: queued for sync. Publishes AttendanceRecordedEvent.
+runHotspotDetectionForZone()
+Fetch open incident reports within 2km and 30 days. Convert to ReportCoordinate list. Call hotspotDetector.detect(). Persist new Hotspot records. Publish HotspotDetectedEvent for each.
+22. AI and Analytics Tier
+22.1 MatchingEngine Scoring
+Factor
+Computation
+Default Weight
+distanceScore
+1 - (distanceKm / maxDistanceKm in candidate set)
+0.40
+reliabilityScore
+pickup_user.current_rating (0–1, derived from composite job scores)
+0.35
+capacityScore
+1 - |1 - (estimatedVolumeL / vehicleCapacityL)| clamped to [0,1]
+0.15
+workloadScore
+1 - (currentAcceptedJobs / maxAcceptedJobs in candidate set)
+0.10
+22.2 HotspotDetector
+Algorithm: DBSCAN (Density-Based Spatial Clustering of Applications with Noise). Distance metric: Haversine formula. Parameters: epsilon = 500 metres, minSamples = 3 (both configurable in reporting_config table). Time window: 30 days. Input: List<ReportCoordinate>. Output: List<DetectedHotspot> with centroid, radius, dominant severity, and member report IDs.
+22.3 BagVolumeEstimator
+A TensorFlow Lite model running on-device in the Android app. Input: JPEG image of a waste bag taken by the home user. Output: estimated volume in litres. The estimated volume is sent to the backend where pricing is calculated per litre. Model inference runs on-device to function without network connectivity. Falls back to manual bag count entry if model fails or image quality is too low.
+22.4 Job Scoring System for Pickup Users
+After every completed job, a composite score is computed: (0.40 × punctualityScore) + (0.30 × jobCompletedStatus) + (0.30 × customerRating). Punctuality score starts at 100% and degrades by 25% per 5 minutes late. If pickup arrives within 20-minute grace window, punctuality is calculated at that point. Customer rating is 1–6 stars, normalised to 0–1. The composite score for each job is blended into the pickup user's running reliability score using an exponential moving average. The reliability score is then converted to a 1–6 star display rating.
+22.5 Operational Analytics
+Metric
+Computation
+MongoDB Collection
+Pickup user fulfilment rate
+Completed jobs / total accepted jobs, rolling 30 days, per pickup user
+provider_performance
+Average fulfilment time
+Mean time from request creation to completion, by zone and pickup user
+provider_performance
+Campaign success rate
+Funded and completed / all dump campaigns, rolling 90 days
+campaign_metrics
+Volunteer participation rate
+Attended / registered, per cleanup campaign
+campaign_metrics
+Zone cleanliness trend score
+Change in incident report density over 30 and 90 day windows, by zone
+zone_health
+Platform revenue
+Sum of platform fees (100 XAF + 5% special call, 5000 XAF + 10% dump campaign) per period
+platform_metrics
+23. UI/UX and Presentation Tier
+23.1 Design Principles
+Mobile-first. Every screen designed for a 5–6 inch Android screen before tablet or desktop.
+Bilingual. English and French string resources. Language preference stored in user profile. Zero mixed-language screens.
+Low-bandwidth tolerant. Core flows functional on 2G / 100 kbps. Images lazy-loaded. Offline draft queue. Client-side calendar caching for offline notification.
+Minimal friction. UC1 special call scheduling must complete in under 5 taps.
+Inheritance visible in UI. The home user dashboard is the base. Pickup user and ambassador see additional sections appended below their home user view.
+Social-native. Campaign completions and certificates are designed to be screenshot-shared to social media.
+23.2 Application Modules
+Module
+Platform
+Primary Users
+Key Screens
+HOBSINN Android App
+Kotlin / Android
+All users (home, pickup, ambassador)
+Home dashboard, Scheduling (special call flow, general slot selector), Reporting (dump and dirty environment flows), Campaigns (filter health/environment, volunteer, contribute, view leaderboard), Calendar, Ongoing (pickup users), Reports validation (ambassadors), Notifications, Profile + Badges
+Admin Dashboard
+React + TypeScript
+System administrators
+User Management, Pickup User Registry, Ambassador Registry, Dispute Queue, Analytics Overview, Campaign Status, System Health, Account Creation on behalf of users
+Environmental Dashboard (future UC5)
+React + TypeScript
+Health professionals, NGOs
+Pollution Heatmaps, Sensor Network Status, Disease Correlation Graphs, Health Advisories
+23.3 Primary UX Flows
+UC1 Special Call — Target: 5 taps to matched
+1. Home user taps Scheduling → Special Call. Pop-up: location sharing required.
+2. GPS auto-fills location. User confirms or adjusts pin.
+3. User enters bag count. Optional: tap to photograph each bag (AI estimates volume).
+4. User selects date and time (must be > 1 hour away). System shows total cost breakdown.
+5. User taps Confirm. Request published. Pickup users notified (biased to closest/highest-rated).
+6. Pickup user accepts from notification or Special Calls list. Request transitions to MATCHED. Added to both calendars and pickup user Ongoing.
+7. Home user receives notification. Must confirm payment via MTN MoMo at least 1 hour before agreed time.
+8. Home user taps payment notification → MoMo USSD prompt → payment confirmed. Request → CONFIRMED.
+9. At agreed time: home user taps calendar event → acknowledges pickup user arrival → IN_PROGRESS.
+10. Pickup user submits completion photo → home user confirms → COMPLETED. Escrow released.
+UC3 Major Dump Campaign
+1. Home user taps Reporting → Major Dump. GPS check confirms user is at location.
+2. User enters textual description, uploads photos. System saves report (PENDING_VALIDATION). Ambassador notified.
+3. Ambassador validates: inputs photo, area and height measurements, own contact. Report → PENDING.
+4. Job posted on Dump Cleanups for pickup users. First 3 to register claim the job.
+5. Ambassador contacts pickup users (call + physical meeting) within 3 days. Inputs payment percentage split. Report → CONFIGURED.
+6. System calculates cost. Campaign published to all home users → PUBLISHED.
+7. Home users contribute via MoMo. Leaderboard updates in real time.
+8. Campaign reaches target → FUNDED. Overflow is platform profit.
+9. Ambassador acknowledges cleanup start within 10 days → IN_PROGRESS.
+10. Cleanup complete. Ambassador submits before/after photos, reconfigures percentages, writes celebration text.
+11. Platform posts completion notification with shareable link. Escrow released. Ambassador badge upgraded significantly.
+UC3 Dirty Environment Volunteer Cleanup
+1. Home user reports dirty environment with GPS, severity rating, optional photo.
+2. Ambassador validates: inputs photo, area estimate, contact. Report → OPEN.
+3. 29-day volunteer registration window opens. Volunteers enter real name and commitment date (7-day span).
+4. After 29 days: ambassador acknowledges within 1 day → IN SESSION. Cleanup scheduled within next 7 days by community vote.
+5. Cleanup day: ambassador opens QR attendance. Scans each attendee's code. System auto-marks ATTENDED.
+6. Ambassador acknowledges completion. Certificate PDFs generated for attended volunteers (name, date, place, VOLUNTEER PROGRAM type). Sent by email and downloadable in app.
+24. Data Model and PostgreSQL Schema
+24.1 Database Technology Decisions
+Primary operational data: PostgreSQL 15 + PostGIS 3.4. ACID compliance, native geospatial types (GEOGRAPHY with SRID 4326), JSON config storage.
+Analytics store: MongoDB 6.0. Flexible schema for aggregated metrics. Read-heavy, no geospatial join load on transactional DB.
+Time-series sensor data (UC5): TimescaleDB extension or InfluxDB. Standard relational tables are unsuitable for high-frequency sensor readings.
+Schema migrations: Flyway versioned SQL files. V1__initial_schema.sql. Every schema change in a new numbered migration file. No manual schema changes in any environment.
+24.2 Core Tables
+Table
+Primary Key
+Key Columns
+Relationships
+users
+user_id UUID
+phone_number UNIQUE, password_hash, preferred_lang (en/fr), is_active
+→ user_roles, → pickup_users (1:1 optional), → ambassadors (1:1 optional)
+user_roles
+role_id UUID
+user_id FK, role CHECK (HOME_USER | PICKUP_USER | AMBASSADOR | SYSTEM_ADMINISTRATOR)
+← users
+refresh_tokens
+token_id UUID
+user_id FK, token_hash UNIQUE, expires_at, revoked BOOLEAN
+← users
+pickup_users
+pickup_user_id UUID
+user_id FK UNIQUE, vehicle_type (WAGON|MOTORCYCLE|TRICYCLE|PICKUP_TRUCK), capacity_litres, current_rating_score DECIMAL(5,4), is_ambassador_verified BOOLEAN
+← users, → general_slot_subscriptions
+ambassadors
+ambassador_id UUID
+user_id FK UNIQUE, community_zone GEOGRAPHY(POLYGON,4326), ambassador_badge_level, total_validations
+← users
+general_slots
+slot_id UUID
+slot_code, day_of_week, start_time, end_time, community_zone GEOGRAPHY(POLYGON,4326), is_active
+→ general_slot_subscriptions
+general_slot_subscriptions
+subscription_id UUID
+slot_id FK, user_id FK (pickup user), subscribed_at, price_paid, subscription_month
+← general_slots, ← users
+general_slot_registrations
+registration_id UUID
+slot_id FK, home_user_id FK, estimated_bags, week_start_date
+← general_slots, ← users
+pickup_requests
+request_id UUID
+requesting_user_id FK, assigned_pickup_user_id FK nullable, request_type (SPECIAL_CALL|GENERAL_SLOT), location_coordinates GEOGRAPHY(POINT,4326), requested_datetime, bag_count, estimated_volume_litres nullable, total_cost_xaf, platform_fee_xaf, status (PENDING|MATCHED|CONFIRMED|IN_PROGRESS|COMPLETED|CANCELLED|REASSIGNING), payment_reference UUID, completion_photo_key
+← users, → transactions
+dump_reports
+report_id UUID
+reporting_user_id FK, location_coordinates GEOGRAPHY(POINT,4326), description TEXT, image_references TEXT[], validation_status (PENDING_VALIDATION|VALIDATED|REJECTED), ambassador_id FK nullable, estimated_area_m2, estimated_height_m, volume_m3 (computed), ambassador_contact, source (USER|SYSTEM), linked_campaign_id UUID nullable
+← users, ← ambassadors, → dump_campaigns
+dump_campaigns
+campaign_id UUID
+linked_report_id FK UNIQUE, estimated_cost_xaf, platform_fee_xaf, funding_target_xaf, current_amount_raised, contributor_count, status (PENDING_PICKUP|CONFIGURED|PUBLISHED|FUNDED|IN_PROGRESS|COMPLETED|CANCELLED), ambassador_percentage DECIMAL, cleanup_deadline, before_photo_key, after_photo_key, celebration_text
+← dump_reports, → campaign_contributions, → dump_pickup_registrations
+dump_pickup_registrations
+registration_id UUID
+campaign_id FK, pickup_user_id FK, contact_provided, payment_percentage DECIMAL, registration_order (1|2|3), is_active
+← dump_campaigns, ← pickup_users
+campaign_contributions
+contribution_id UUID
+campaign_id FK, contributor_user_id FK, amount_xaf, payment_reference UUID
+← dump_campaigns, ← users
+incident_reports
+report_id UUID
+reporting_user_id FK, location_coordinates GEOGRAPHY(POINT,4326), severity_level (AVERAGE|DIRTY|DIRTY_LV1|DIRTY_LV2|DIRTY_LV3), image_reference TEXT, validation_status, ambassador_id FK nullable, estimated_area_m2, resolution_status (OPEN|IN_SESSION|IN_PROGRESS|COMPLETED)
+← users, ← ambassadors, → hotspot_reports, → cleanup_campaigns
+cleanup_campaigns
+campaign_id UUID
+linked_report_id FK UNIQUE, status (OPEN|IN_SESSION|IN_PROGRESS|COMPLETED), volunteer_deadline, session_date, ambassador_id FK, organiser_user_id FK
+← incident_reports, → volunteer_registrations
+volunteer_registrations
+registration_id UUID
+campaign_id FK, user_id FK, real_name VARCHAR, commitment_date, attendance_status (REGISTERED|ATTENDED|ABSENT), qr_token UNIQUE, certificate_issued BOOLEAN
+← cleanup_campaigns, ← users
+health_campaigns
+campaign_id UUID
+title, description, organiser_info, campaign_type (SENSITIZATION|TESTING|HEALTH_ADVISORY), community_zone GEOGRAPHY(POLYGON,4326), event_date, flyer_key nullable, status (POSTED|CLOSED)
+→ calendar_items (via notification)
+transactions
+transaction_id UUID
+source_entity_type (pickup_request|campaign_contribution|refund), source_entity_id, payer_user_id FK, payee_user_id FK nullable, amount_xaf, platform_fee_xaf, payment_method (MTN_MOMO), gateway_transaction_id UNIQUE, status (INITIATED|PENDING|CONFIRMED|RELEASED|REFUNDED|FAILED), idempotency_key UNIQUE
+← users. APPEND-ONLY.
+job_scores
+score_id UUID
+pickup_user_id FK, request_id FK, punctuality_score DECIMAL, completion_status_score DECIMAL, customer_rating INTEGER, composite_score DECIMAL, scored_at
+← pickup_users, ← pickup_requests
+badges
+badge_id UUID
+user_id FK, badge_type, badge_level, awarded_at, reason
+← users
+status_transitions
+transition_id UUID
+entity_type, entity_id UUID, from_status, to_status, actor_id FK nullable, transitioned_at
+Universal audit trail
+outbox_events
+outbox_id UUID
+event_type, aggregate_type, aggregate_id, kafka_topic, payload JSONB, status (PENDING|PUBLISHED|FAILED), retry_count
+Transactional outbox
+hotspots
+hotspot_id UUID
+centroid GEOGRAPHY(POINT,4326), radius_meters, report_count, dominant_severity, zone_code, status (ACTIVE|RESOLVED)
+→ hotspot_reports
+hotspot_reports
+hotspot_id + report_id (composite PK)
+Junction table linking hotspots to incident_reports
+← hotspots, ← incident_reports
+sensor_nodes (UC5)
+node_id UUID
+hardware_id UNIQUE, location GEOGRAPHY(POINT,4326), sensor_types TEXT[], calibrated_at, is_active
+Scaffolded empty.
+sensor_readings (UC5)
+reading_id UUID
+sensor_node_id FK, reading_timestamp, pollutant_type, measured_value, unit, quality_flag
+Scaffolded empty. TimescaleDB hypertable when populated.
+drone_observations (UC4)
+observation_id UUID
+capture_timestamp, geo_boundary GEOGRAPHY(POLYGON,4326), image_reference, detected_category, confidence_score, linked_report_id FK nullable
+Scaffolded empty.
+24.3 Critical Indexes
+Table
+Index Type
+Column(s)
+Purpose
+pickup_users
+GIST
+service_zone (future, when zone polygon added)
+Proximity lookup in MatchingEngine
+pickup_requests
+GIST
+location_coordinates
+Proximity queries for pickup matching
+dump_reports
+GIST
+location_coordinates
+Deduplication radius search (500m)
+incident_reports
+GIST
+location_coordinates
+DBSCAN input query, hotspot zone fetch
+hotspots
+GIST
+centroid
+Zone broadcast radius queries
+pickup_requests
+B-tree
+status
+State machine queue queries
+dump_campaigns
+B-tree
+status, cleanup_deadline
+Active campaign listing, deadline enforcement
+cleanup_campaigns
+B-tree
+status, volunteer_deadline
+Volunteer window enforcement
+volunteer_registrations
+B-tree
+qr_token
+QR attendance lookup (unique)
+transactions
+B-tree
+gateway_transaction_id
+Webhook idempotency check
+transactions
+B-tree composite
+(source_entity_type, source_entity_id)
+Payment lookup by business entity
+outbox_events
+B-tree composite
+(status, created_at)
+OutboxPublisher polling query
+job_scores
+B-tree
+pickup_user_id
+Reliability score recalculation
+25. Kafka Topics and Event Catalogue
+All events extend the sealed class HobsInnEvent in shared/common-events. Every event carries eventId (UUID), occurredAt (Instant), and correlationId (UUID) for distributed tracing.
+Event Class
+Topic
+Key Fields
+Downstream Consumers
+SpecialCallCreatedEvent
+gar.pickup.events
+requestId, requestingUserId, locationLat/Lng, requestedDatetime, bagCount, estimatedVolumeL, totalCostXaf
+analytics-service
+PickupMatchedEvent
+gar.pickup.events
+requestId, pickupUserId, estimatedCostXaf
+notification-service, analytics-service
+PickupConfirmedEvent
+gar.pickup.events
+requestId, pickupUserId, confirmedAt
+notification-service
+JobStartedEvent
+gar.pickup.events
+requestId, pickupUserId, startedAt
+notification-service, analytics-service
+JobCompletedEvent
+gar.pickup.events
+requestId, pickupUserId, completionPhotoKey, requestingUserId, transactionId
+payment-service (escrow release), provider-service (reliability update), notification-service, analytics-service
+JobCancelledEvent
+gar.pickup.events
+requestId, actorId, reason, refundRequired, penaltyApplied
+payment-service, notification-service, user-service (badge degradation)
+DumpReportSubmittedEvent
+gar.reporting.events
+reportId, reportingUserId, locationLat/Lng, source
+notification-service (ambassador alert), analytics-service
+DumpReportValidatedEvent
+gar.reporting.events
+reportId, ambassadorId, volumeM3, estimatedCostXaf
+campaign-service (open pickup registration)
+DumpCampaignPublishedEvent
+gar.campaign.events
+campaignId, fundingTargetXaf, locationLat/Lng
+notification-service (zone broadcast), analytics-service
+ContributionReceivedEvent
+gar.campaign.events
+campaignId, contributionId, contributorUserId, amountXaf, newTotalRaised
+notification-service (leaderboard update)
+DumpCampaignFundedEvent
+gar.campaign.events
+campaignId, totalRaisedXaf, contributorCount
+notification-service, analytics-service
+DumpCampaignCompletedEvent
+gar.campaign.events
+campaignId, afterPhotoKey, celebrationText, ambassadorId
+payment-service (escrow release), notification-service (shareable post), user-service (ambassador badge upgrade)
+CleanupCampaignOpenEvent
+gar.campaign.events
+campaignId, linkedReportId, volunteerDeadline, locationLat/Lng
+notification-service (zone broadcast)
+CleanupCompletedEvent
+gar.campaign.events
+campaignId, attendedUserIds, locationLat/Lng
+notification-service (certificate dispatch), analytics-service
+IncidentSubmittedEvent
+gar.reporting.events
+reportId, reportingUserId, locationLat/Lng, severityLevel
+analytics-service
+HotspotDetectedEvent
+gar.reporting.events
+hotspotId, centroidLat/Lng, reportCount, dominantSeverity, radiusMeters, zoneCode
+notification-service (1km zone broadcast to ambassadors and home users)
+PaymentConfirmedEvent
+gar.payment.events
+transactionId, sourceEntityType, sourceEntityId, gatewayTransactionId
+scheduling-service (job confirmation), campaign-service (contribution confirmation), notification-service
+PaymentFailedEvent
+gar.payment.events
+transactionId, sourceEntityType, sourceEntityId, reason
+scheduling-service (slot release), campaign-service (contribution rollback), notification-service
+BadgeAwardedEvent
+gar.user.events
+userId, badgeType, badgeLevel, reason
+notification-service
+26. Class Design
+26.1 Domain Entities (JPA)
+Class
+Package
+Key Attributes
+Key Methods
+PickupRequest
+scheduling.domain
+requestId, requestingUserId, assignedPickupUserId nullable, requestType, locationCoordinates: JTS Point, requestedDatetime, bagCount, estimatedVolumeL, totalCostXaf, platformFeeXaf, status: PickupStatus, completionPhotoKey nullable
+transitionTo(newStatus, actorId). isInDangerZone(): Boolean (< 1h to requestedDatetime). calculateLatePenalty(minutesLate): Double.
+PickupUser
+provider.domain
+pickupUserId, userId, vehicleType: VehicleType, capacityLitres, currentRatingScore, isAmbassadorVerified
+updateRatingScore(jobScore). isAvailableAt(datetime): Boolean. convertScoreToStars(): Int.
+DumpReport
+campaign.domain
+reportId, reportingUserId, locationCoordinates, description, imageReferences, validationStatus, ambassadorId nullable, estimatedAreaM2, estimatedHeightM, volumeM3 (computed), source
+validate(ambassadorId, measurements). reject(ambassadorId, reason). computeVolume(): Double.
+DumpCampaign
+campaign.domain
+campaignId, linkedReportId, estimatedCostXaf, platformFeeXaf, fundingTargetXaf, currentAmountRaised, contributorCount, status, pickupRegistrations: List<DumpPickupRegistration>, cleanupDeadline
+addContribution(amount, userId, paymentRef). isFunded(): Boolean. configurePickups(registrations, percentages). complete(afterKey, celebrationText). isDeadlineExceeded(): Boolean.
+CleanupCampaign
+campaign.domain
+campaignId, linkedReportId, status, volunteerDeadline, sessionDate, attendances: List<VolunteerRegistration>
+openRegistration(). closeRegistration(). acknowledgeSession(ambassadorId, sessionDate). complete(attendedIds).
+VolunteerRegistration
+campaign.domain
+registrationId, campaignId, userId, realName, commitmentDate, attendanceStatus: AttendanceStatus, qrToken UNIQUE, certificateIssued
+markAttended(). generateCertificate(communityName, volunteerProgramType, ambassadorName): ByteArray.
+Transaction
+payment.domain
+transactionId, sourceEntityType, sourceEntityId, payerUserId, payeeUserId nullable, amountXaf, platformFeeXaf, gatewayTransactionId UNIQUE, status: TransactionStatus, idempotencyKey UNIQUE
+APPEND-ONLY. No mutation methods.
+OutboxEvent
+shared.domain
+outboxId, eventType, aggregateType, aggregateId, kafkaTopic, payload: HobsInnEvent (JSONB), status, retryCount
+OutboxPublisher reads PENDING records and sends to Kafka.
+26.2 Service Classes
+Class
+Spring Bean
+Injected Dependencies
+Core Contracts
+SchedulingService
+@Service @Transactional
+PickupRequestRepository, PickupUserRepository, OutboxRepository, MatchingEngine
+createSpecialCallRequest(), attemptMatching(), confirmPayment(), startJob(), completeJob(), triggerReassignment()
+MatchingEngine
+@Component
+PickupUserRepository (interface), MatchingConfig
+findMatches(location, requestedDatetime, constraints): List<PickupUserMatch>. Read-only. No writes. No Kafka.
+CampaignService
+@Service @Transactional
+DumpReportRepository, DumpCampaignRepository, ContributionRepository, CleanupCampaignRepository, VolunteerRepository, OutboxRepository, CostEstimationModule
+configureDumpCampaign(), publishDumpCampaign(), addContribution(), acknowledgeJobStart(), completeDumpCampaign(), openCleanupCampaign(), acknowledgeCleanupSession(), completeCleanupCampaign()
+ReportingService
+@Service @Transactional
+DumpReportRepository, IncidentReportRepository, HotspotRepository, AttendanceRepository, OutboxRepository, HotspotDetector
+submitDumpReport(), validateDumpReport(), submitIncidentReport(), validateIncidentReport(), recordAttendance(), runHotspotDetectionForZone()
+PaymentService
+@Service @Transactional
+TransactionRepository, OutboxRepository, PaymentGatewayAdapter (interface), UserPhoneResolver
+initiatePayment(), handleWebhookConfirmation(), releaseEscrow(), processRefund(), reconcilePendingTransactions()
+CertificateService
+@Service
+VolunteerRepository, NotificationService
+generateCertificate(registrationId): ByteArray. Uses Apache PDFBox with static template. Variables: communityName, VOLUNTEER_PROGRAM enum, ambassadorName, volunteerName, date.
+HotspotDetector
+@Component
+None (stateless)
+detect(reports: List<ReportCoordinate>, config): List<DetectedHotspot>. Pure DBSCAN function.
+BagVolumeEstimator
+@Component (Android-side TFLite)
+TFLite model file
+estimate(imageBitmap: Bitmap): Double (litres). Falls back to manual count if model confidence < threshold.
+OutboxPublisher
+@Component @Scheduled
+OutboxRepository, KafkaTemplate<String, HobsInnEvent>
+publishPendingEvents() every 2 seconds.
+JwtTokenProvider
+@Component
+@Value jwt.secret, expiration config
+generateAccessToken(userId, roles, lang): String. validateToken(token): Boolean. extractUserId(token): UUID.
+26.3 Interface Contracts
+Interface
+Implementations
+Methods
+PaymentGatewayAdapter
+MTNMoMoAdapter, OrangeMoneyAdapter (future)
+initiateEscrow(amountXaf, payerPhone, idempotencyKey, description): GatewayInitiateResponse. verifyStatus(gatewayTxId): GatewayStatusResponse. releaseEscrow(gatewayTxId): GatewayReleaseResponse. refund(gatewayTxId, amountXaf): GatewayRefundResponse.
+ChannelAdapter
+FCMPushAdapter, SMSAdapter
+send(recipient: RecipientProfile, message: RenderedMessage): DeliveryResult. getChannel(): NotificationChannel.
+DroneDataAdapter (UC4 future)
+TIESDroneAdapter, NoOpDroneDataAdapter (stub)
+subscribe(topicId): ObservationStream. parse(rawEvent: KafkaRecord): DroneObservation.
+SensorDataAdapter (UC5 future)
+ESP32MQTTAdapter, NoOpSensorDataAdapter (stub)
+subscribe(nodeId): ReadingStream. parse(rawPayload: MqttMessage): SensorReading.
+RecyclingAdapter (UC6 future)
+RecyclingPartnerAdapter, NoOpRecyclingAdapter (stub)
+submitWastePickup(wasteStream, volumeL, locationPoint): RecyclingConfirmation.
+27. Use Case Specifications
+UC-001: Schedule Special Call Waste Pickup
+Field
+Detail
+Actors
+Primary: Home User. Secondary: Pickup User, MTN MoMo Gateway, Notification Service, MatchingEngine.
+Preconditions
+User has HOME_USER role. User enables GPS. User has active MoMo account.
+Main Flow
+1. User enables location sharing. 2. Enters bag count and optional photos for AI volume estimation. 3. Selects datetime (> 1 hour away). 4. System calculates total cost and displays breakdown. 5. Request published. MatchingEngine biases top 3 pickup users. 6. Pickup user accepts from notification or Special Calls list → MATCHED. 7. Home user confirms payment via MoMo ≥ 1 hour before agreed time → CONFIRMED. 8. Home user acknowledges arrival → IN_PROGRESS. 9. Pickup user submits waste photo → COMPLETED. Escrow released.
+Alternative A1
+No pickup user available within 25km → User notified, offered to reschedule.
+Alternative A2
+Pickup user accepts then resigns > 1 hour before agreed time → request returns to PENDING with no penalty.
+Alternative A3
+Payment not confirmed by 1-hour deadline → CANCELLED. Home user badge degraded considerably.
+Alternative A4
+Pickup user resigns within 1-hour danger zone → 0% score on that job, badge degradation. Request → PENDING (marked invalid for imminent reschedule).
+Exception E1
+Pickup user late > 20 minutes → triggerReassignment(). REASSIGNED. Home user notified.
+Exception E2
+Home user cancels after CONFIRMED but > 1 hour before → full refund, no penalty (platform keeps fee).
+Exception E3
+Home user cancels within 1-hour danger zone → pickup user paid 50% of agreed amount. Platform keeps its charges. Home user badge mildly degraded.
+Postconditions
+PickupRequest status=COMPLETED. Transaction status=RELEASED. Pickup user rating score updated.
+UC-002: General Pickup Slot Registration
+Field
+Detail
+Actors
+Primary: Home User, Pickup User. Secondary: Ambassador (capacity verification), Payment Service.
+Preconditions
+General slots created by system admin. Pickup user vehicle verified by ambassador.
+Main Flow
+1. Home user selects a general slot (day, time, community). Inputs estimated bag count for the week. 2. Pickup user subscribes to monthly slot coverage. System calculates aggregated capacity from all registered home users. 3. Pickup user price for the slot adjusts: increases if aggregate capacity is high, decreases if low. 4. Home user pays pickup user hand-to-hand on pickup day. 5. Both events recorded in calendar. Pickup user Ongoing shows upcoming general pickups.
+Alternative A1
+Pickup user capacity insufficient for aggregated demand → System splits slot or seeks additional pickup user.
+Postconditions
+GeneralSlotSubscription recorded. GeneralSlotRegistration recorded. Calendar events created for both parties.
+UC-003A: Major Dump Reporting and Funded Cleanup
+Field
+Detail
+Actors
+Primary: Home User (reporter), Ambassador, Pickup Users (1–3). Secondary: Contributing Home Users, MTN MoMo Gateway.
+Preconditions
+User has HOME_USER role. User GPS at dump location.
+Main Flow
+1. Home user submits dump report with GPS, description, photos. 2. Ambassador receives and validates: inputs area, height, contact → PENDING. 3. Job posted for pickup registration (max 3 pickup users, 3 days window). 4. Ambassador contacts pickup users, inputs payment percentages → CONFIGURED. 5. Cost calculated. Campaign published → PUBLISHED. 6. Home users contribute via MoMo. Leaderboard updated. Overflow is platform profit. 7. Campaign reaches target → FUNDED. 8. Ambassador starts cleanup within 10 days → IN_PROGRESS. 9. Completion: ambassador submits after photo, celebration text, final percentage adjustments → COMPLETED. Escrow released. Notification with shareable link posted to all.
+Alternative A1
+3 days pass without CONFIGURED → campaign CANCELLED. Coordination failure flagged.
+Alternative A2
+10 days pass without start → ambassador loses 10% fee, receives badge degradation. System admin notified.
+Postconditions
+DumpCampaign status=COMPLETED. All payment percentages disbursed. Ambassador badge upgraded significantly. Campaign completion shareable to social media.
+UC-003B: Dirty Environment Volunteer Cleanup
+Field
+Detail
+Actors
+Primary: Home User (reporter), Ambassador, Volunteer Home Users.
+Preconditions
+User has HOME_USER role. User GPS at location.
+Main Flow
+1. Home user submits dirty environment report with GPS, severity, optional photo. 2. Ambassador validates: inputs photo, area estimate, contact → OPEN. 3. 29-day volunteer window. Volunteers input real name and commitment date. 4. After 29 days: ambassador acknowledges within 1 day → IN_SESSION. Community votes on session date (within 7 days). 5. Cleanup day: ambassador opens QR scan. Scans each attendee → system marks ATTENDED. 6. Ambassador acknowledges completion. Certificates generated and emailed to attended volunteers.
+Postconditions
+CleanupCampaign status=COMPLETED. Certificates issued with volunteer names, date, location, VOLUNTEER_PROGRAM type.
+28. Sequence Diagrams
+28.1 UC1 — Special Call from Request to Confirmed
+[1] MobileApp → APIGateway: POST /v1/pickups/special-call {userId, lat, lng, requestedDatetime, bagCount, bagPhotoKeys}
+[2] APIGateway: validate JWT → extract userId, roles
+[3] APIGateway → SchedulingService: forward request
+[4] SchedulingService: validate GPS in Cameroon bounds. Validate requestedDatetime > now + 1hr.
+[5] SchedulingService: BagVolumeEstimator.estimate(photos) if photos provided. Calculate totalCostXaf + platformFeeXaf.
+[6] SchedulingService → DB: INSERT pickup_requests {status=PENDING}
+[7] SchedulingService → MatchingEngine: findMatches(location, requestedDatetime, constraints)
+[8] MatchingEngine → PickupUserRepository: findNearbyPickupUsers(lat, lng, 25km)
+[9] MatchingEngine: computeScore() for each candidate → return ranked list
+[10] SchedulingService → NotificationService: notifyTopCandidates(matches[0..2])
+[11] SchedulingService → DB: UPDATE pickup_requests {status remains PENDING, visible to all pickups}
+[12] SchedulingService → DB: INSERT outbox_events {SpecialCallCreatedEvent}
+[13] SchedulingService → MobileApp: 200 {requestId, status=PENDING, estimatedCostXaf}
+[14] Pickup user accepts (from notification or Special Calls list)
+[15] SchedulingService → DB: UPDATE pickup_requests {status=MATCHED, assignedPickupUserId}
+[16] DB: INSERT outbox_events {PickupMatchedEvent}
+[17] OutboxPublisher: publish → Kafka gar.pickup.events
+[18] NotificationService: notify home user — payment required ≥ 1hr before agreed time
+[19] Home user taps payment notification → MoMo USSD prompt → payment confirmed externally
+[20] MTNMoMoGateway → PaymentService: POST /webhook {gatewayTxId, status=SUCCESSFUL}
+[21] PaymentService: verify HMAC. Find transaction. Check not already CONFIRMED.
+[22] PaymentService → DB: UPDATE transactions {status=CONFIRMED}
+[23] PaymentService → DB: INSERT outbox_events {PaymentConfirmedEvent}
+[24] SchedulingService ← Kafka: consume PaymentConfirmedEvent
+[25] SchedulingService → DB: UPDATE pickup_requests {status=CONFIRMED}
+[26] NotificationService: notify pickup user — job CONFIRMED, report to location at agreed time
+28.2 UC3 — Dump Campaign Lifecycle
+[1] MobileApp → ReportingService: POST /v1/reports/dump {userId, lat, lng, description, photoKeys}
+[2] ReportingService: check GPS at location. Deduplication check within 500m.
+[3] ReportingService → DB: INSERT dump_reports {status=PENDING_VALIDATION}
+[4] ReportingService → outbox: DumpReportSubmittedEvent
+[5] NotificationService: dispatch to ambassadors in zone
+[6] Ambassador validates: POST /v1/reports/{id}/validate {areaM2, heightM, contact, photoKey}
+[7] ReportingService: compute volumeM3. Set validationStatus=VALIDATED.
+[8] ReportingService → outbox: DumpReportValidatedEvent
+[9] CampaignService ← Kafka: consume DumpReportValidatedEvent → open pickup registration (3 days)
+[10] Pickup users register (max 3). After 3 days: ambassador configures percentages → CONFIGURED.
+[11] CampaignService: CostEstimationModule.estimate(). Campaign → PUBLISHED.
+[12] CampaignService → outbox: DumpCampaignPublishedEvent → zone broadcast
+[13] Home users contribute via MoMo (webhook flow same as UC1). Campaign → FUNDED when target reached.
+[14] Ambassador acknowledges start → IN_PROGRESS. Must complete within 10 days.
+[15] Ambassador completes: POST /v1/campaigns/{id}/complete {afterPhotoKey, celebrationText, finalPercentages}
+[16] CampaignService → outbox: DumpCampaignCompletedEvent → PaymentService releases escrow to pickup users per percentages. Notification with shareable link.
+29. Activity Diagrams
+29.1 UC1 Special Call — Full Activity Flow
+START → Home user enables location sharing → Enter bag count (+ optional bag photos) → System calculates cost → User selects datetime (must be > 1hr away) → [validation: datetime valid?] NO → show error → re-enter datetime → YES → Request published → MatchingEngine scores candidates → [pickup user found?] NO → notify user, offer reschedule → STOP → YES → Top 3 notified. All can view. → [pickup user accepts before deadline?] NO → request remains PENDING until datetime approaches → [1hr danger zone reached with no match?] → CANCELLED → STOP → YES → Request → MATCHED → Both calendars updated → [home user confirms MoMo payment ≥ 1hr before?] NO → [deadline passed?] → CANCELLED, home user badge degraded → STOP → YES → Request → CONFIRMED → [pickup user arrives within 20-min grace window?] NO → [20 min elapsed?] → triggerReassignment() → REASSIGNED → request → PENDING → loop back to matching → YES → Home user acknowledges arrival → IN_PROGRESS → [pickup user submits waste photo?] YES → Home user confirms → COMPLETED → Escrow released → Job scored → Rating updated → STOP
+29.2 UC3A Dump Campaign — Full Activity Flow
+START → Home user at dump location reports with GPS + description + photos → Ambassador notified → [ambassador validates within deadline?] NO → report REJECTED, user notified → STOP → YES → Report → PENDING → Pickup users can register (3 days) → [3 or more pickup users registered?] → Ambassador contacts each, inputs percentages → [configured within 3 days?] NO → CANCELLED → STOP → YES → Report → CONFIGURED → CostEstimationModule calculates cost → Campaign → PUBLISHED → Zone broadcast → [LOOP: home users contribute] → [target reached?] NO → [deadline passed?] YES → FAILED → refunds processed → STOP → YES (funded) → Campaign → FUNDED → [ambassador starts within 10 days?] NO → ambassador loses fee, badge degraded, admin notified → STOP → YES → Campaign → IN_PROGRESS → [cleanup completed?] YES → ambassador submits after photo, celebration text, final percentages → Campaign → COMPLETED → Escrow disbursed → Shareable notification posted → Ambassador badge upgraded → STOP
+30. Data Flow Diagrams
+30.1 Level 0 — System Context
+External Entity
+Data INTO HOBSINN
+Data OUT of HOBSINN
+Home User (Mobile App)
+Pickup requests, dump reports, incident reports, campaign contributions, volunteer registrations, report validations (if ambassador)
+Job confirmations, campaign progress updates, completion evidence, hotspot alerts, certificates, badges, calendar events
+Pickup User (Mobile App, extends Home User)
+Job acceptances, job start/completion confirmations, slot registrations, vehicle/capacity declarations
+Job assignments, schedule view, earnings summary, payment release confirmation, rating score
+Ambassador (Mobile App, extends Home User)
+Report validations, measurements, pickup configurations, session acknowledgements, QR scan results
+Pending validation requests, zone campaign status, volunteer lists, completion notifications, badge upgrades
+System Administrator (Admin Dashboard)
+User account creation/management, system configuration, dispute resolution
+Full platform visibility, audit trails, analytics, user management confirmations
+MTN MoMo Gateway
+Payment confirmations (SUCCESSFUL/FAILED), settlement status
+Payment initiation requests, escrow instructions, release requests, refund requests
+TIES Drone System (Future UC4)
+DroneObservation events via Kafka gar.drone.events
+Automated DumpReport creation triggers
+ESP32 Sensor Network (Future UC5)
+SensorReading events via MQTT → Kafka gar.sensor.events
+Pollution alerts, health advisories, sensor maintenance flags
+31. State Machine Definitions
+31.1 PickupRequest State Machine (Special Call)
+From State
+To State
+Trigger
+Actor
+Side Effect
+(none)
+PENDING
+Home user submits request
+HOME_USER
+Outbox: SpecialCallCreatedEvent. Visible to all pickup users.
+PENDING
+MATCHED
+Pickup user accepts request
+PICKUP_USER
+Request removed from Special Calls list. Both calendars updated. Outbox: PickupMatchedEvent.
+MATCHED
+CONFIRMED
+MoMo payment confirmed ≥ 1hr before agreed time
+SYSTEM (gateway webhook)
+Outbox: PickupConfirmedEvent. Pickup user notified to proceed.
+CONFIRMED
+IN_PROGRESS
+Home user acknowledges pickup user arrival
+HOME_USER
+Outbox: JobStartedEvent.
+IN_PROGRESS
+COMPLETED
+Pickup user submits waste photo + home user confirms
+PICKUP_USER / HOME_USER
+Outbox: JobCompletedEvent (triggers escrow release). Job scored.
+MATCHED → CONFIRMED
+CANCELLED
+Payment not confirmed by 1-hour deadline
+SYSTEM
+Slot released. Home user badge degraded considerably. Outbox: JobCancelledEvent.
+CONFIRMED
+REASSIGNED
+Pickup user > 20 minutes late
+SYSTEM (scheduled check)
+triggerReassignment(). Pickup user rated 0% score. Badge degraded. Outbox: JobReassignedEvent.
+REASSIGNED
+PENDING
+MatchingEngine seeks new pickup user
+SYSTEM
+Request re-enters PENDING state.
+PENDING / MATCHED / CONFIRMED (> 1hr before)
+CANCELLED / PENDING
+Either party resigns > 1hr before agreed time
+HOME_USER or PICKUP_USER
+Full refund if CONFIRMED. No penalty. If CONFIRMED → back to PENDING.
+CONFIRMED (within 1hr)
+CANCELLED
+Home user cancels within danger zone
+HOME_USER
+Pickup user paid 50%. Platform keeps charges. Home user badge mildly degraded.
+PENDING
+INVALID
+Datetime within 1hr with no match
+SYSTEM
+Removed from Special Calls. Cached on home user device for rescheduling.
+31.2 DumpCampaign State Machine
+From State
+To State
+Trigger
+Side Effect
+(none)
+PENDING_PICKUP
+DumpReport validated by ambassador
+Pickup registration window opens (3 days). Job posted on Dump Cleanups.
+PENDING_PICKUP
+CONFIGURED
+Ambassador inputs percentages within 3 days
+Outbox: DumpCampaignConfiguredEvent. Cost calculated.
+PENDING_PICKUP
+CANCELLED
+3 days elapsed without CONFIGURED
+Campaign cancelled. Coordination failure flagged to system admin.
+CONFIGURED
+PUBLISHED
+System triggers campaign publication
+Outbox: DumpCampaignPublishedEvent. Zone broadcast to home users.
+PUBLISHED
+FUNDED
+current_amount_raised >= fundingTargetXaf
+Funds locked. Overflow is platform profit. Outbox: DumpCampaignFundedEvent.
+PUBLISHED
+FAILED
+Deadline passed without reaching target
+All contributions refunded. Outbox: CampaignFailedEvent.
+FUNDED
+IN_PROGRESS
+Ambassador acknowledges cleanup start (within 10 days)
+Outbox: DumpCampaignInProgressEvent.
+FUNDED
+FAILED (ambassador penalty)
+10 days elapsed without IN_PROGRESS acknowledgement
+Ambassador loses 10% fee. Badge degraded. Admin notified.
+IN_PROGRESS
+COMPLETED
+Ambassador submits after photo, text, final percentages
+Outbox: DumpCampaignCompletedEvent → escrow release, shareable notification, ambassador badge upgrade.
+31.3 CleanupCampaign State Machine
+From State
+To State
+Trigger
+Side Effect
+(none)
+OPEN
+IncidentReport validated by ambassador
+29-day volunteer registration window begins. Zone broadcast.
+OPEN
+IN_SESSION
+Ambassador acknowledges within 1 day after 29-day window
+Community votes on session date within next 7 days. Outbox: CleanupInSessionEvent.
+IN_SESSION
+IN_PROGRESS
+Cleanup day: ambassador opens QR scan
+Attendance tracking begins.
+IN_PROGRESS
+COMPLETED
+Ambassador acknowledges completion + all QR scans processed
+Certificates generated for ATTENDED volunteers. Outbox: CleanupCompletedEvent.
+31.4 Transaction State Machine (Append-Only)
+State
+Meaning
+Next Allowed States
+INITIATED
+Gateway call made. Awaiting user payment.
+PENDING, FAILED
+PENDING
+User payment action in progress. Awaiting webhook.
+CONFIRMED, FAILED
+CONFIRMED
+Payment successfully completed. Funds held in escrow.
+RELEASED, REFUNDED
+RELEASED
+Escrow disbursed to payee (minus platform fee).
+None (terminal)
+REFUNDED
+Funds returned to payer (platform fee retained on danger-zone cancellation).
+None (terminal)
+FAILED
+Payment failed or timed out.
+None (terminal)
+32. Scalability, Reliability and Fault Tolerance
+32.1 Scalability Strategy — All 12 Factors Applied
+Factor
+How HOBSINN Applies It
+1. Horizontal vs. Vertical Scaling
+All application-tier services are stateless by design. Scale by adding instances behind the API Gateway load balancer. Kubernetes HPA auto-scales on CPU (70% target) and Kafka consumer lag.
+2. Load Balancing
+API Gateway distributes traffic across all service instances using round-robin by default. Kubernetes LoadBalancer service exposes only the gateway externally.
+3. Stateless Architecture
+Services hold no session state. All state lives in PostgreSQL, Kafka, or Redis. Any instance can handle any request at any time.
+4. Database Sharding and Partitioning
+PostgreSQL read replica for analytics-service. TimescaleDB hypertables for sensor time-series data (UC5). Future geographic zone sharding as user base grows.
+5. Caching Strategies
+Redis 7.2-alpine caches JWT session tokens and API Gateway rate limiting counters. Client-side Android calendar cache enables offline access. CDN for static campaign images and certificates.
+6. Asynchronous Processing
+All cross-service communication via Kafka. Hotspot detection, certificate generation, leaderboard updates, and email dispatch are async. Heavy operations never block user-facing API responses.
+7. Microservices and Decomposition
+Nine independent services. CampaignService and NotificationService scale independently during campaign surges. PaymentService scales independently during MoMo payment peaks.
+8. Database Replication
+PostgreSQL read replica serves analytics-service and admin dashboard read queries, isolating read traffic from transactional writes on the primary.
+9. Auto-Scaling and Elasticity
+Kubernetes HorizontalPodAutoscaler scales on CPU and Kafka consumer lag. Terraform IaC provisions cloud resources (VPC, RDS, MSK, EKS) that auto-scale.
+10. Service Discovery
+Kubernetes DNS-based service discovery for all internal communication. No hardcoded service addresses. Services locate each other by Kubernetes service name.
+11. Consistent Hashing
+Redis cluster uses consistent hashing for distributed cache key distribution. Kafka partition assignment uses consistent hashing for consumer group load balancing.
+12. Circuit Breakers
+Spring Cloud Circuit Breaker wraps all inter-service HTTP calls and MoMo gateway calls. Returns 503 with Retry-After header instead of queuing indefinitely or cascading failures.
+32.2 Reliability Design
+Transactional outbox pattern guarantees at-least-once Kafka event delivery. Business transactions and event creation commit atomically to PostgreSQL.
+Payment idempotency key (sourceEntityType:sourceEntityId) prevents duplicate charges on retry. The gateway_transaction_id unique constraint prevents duplicate webhook processing.
+Pickup user late detection runs on a 1-minute polling cycle for CONFIRMED requests approaching their agreed datetime. At 20 minutes late: auto-reassignment.
+Campaign deadline enforcement runs daily. Queries PENDING_PICKUP campaigns past 3-day window, FUNDED campaigns past 10-day cleanup window. Auto-transitions and notifications dispatched.
+32.3 Fault Tolerance Design
+If NotificationService is unavailable, all business transactions still complete. Notifications are queued as outbox events and dispatched when the service recovers.
+If MatchingEngine returns no results, SchedulingService returns a clear no-pickup-available response and logs the failed match for analytics.
+If MoMo gateway is unreachable, PaymentService queues the initiation request. Reconciliation job running every 15 minutes retries gateway verification. After 5 failed retries, transaction marked FAILED and slot released.
+Client-side calendar caching in the Android app ensures scheduled events surface as notifications even without an active data connection.
+Kafka consumer failures produce dead letter queue events after configured max retry attempts. Dead letter events are flagged in Grafana alerts for administrator investigation.
+33. Infrastructure and DevOps
+33.1 Local Development Stack (Docker Compose)
+Container
+Image
+Port
+Purpose
+hobsinn-postgres
+postgis/postgis:15-3.4
+5432
+Primary DB with PostGIS. Initialised with Flyway migrations on first service start.
+hobsinn-mongodb
+mongo:6.0
+27017
+Analytics store for AnalyticsService.
+hobsinn-zookeeper
+confluentinc/cp-zookeeper:7.5.3
+2181
+Kafka coordination service.
+hobsinn-kafka
+confluentinc/cp-kafka:7.5.3
+9092 / 29092
+Event bus. Auto-creates all gar.* topics on first publish.
+hobsinn-kafka-ui
+provectuslabs/kafka-ui:latest
+8090
+Kafka topic browser and consumer lag monitor.
+hobsinn-redis
+redis:7.2-alpine
+6379
+Session cache and rate limiting for API Gateway.
+hobsinn-prometheus
+prom/prometheus:v2.48.1
+9090
+Metrics scraping from all /actuator/prometheus endpoints.
+hobsinn-grafana
+grafana/grafana:10.2.3
+3001
+Dashboards for service health, Kafka lag, payment status, error rates.
+hobsinn-api-gateway
+Built from services/api-gateway/Dockerfile
+8080
+TLS, JWT validation, rate limiting, routing.
+hobsinn-scheduling-service
+Built from services/scheduling-service/Dockerfile
+8081
+UC1 and UC2 lifecycle management.
+hobsinn-campaign-service
+Built from services/campaign-service/Dockerfile
+8082
+UC3 campaign lifecycle management.
+hobsinn-reporting-service
+Built from services/reporting-service/Dockerfile
+8083
+UC3 report intake, hotspot detection, attendance, certificates.
+hobsinn-payment-service
+Built from services/payment-service/Dockerfile
+8084
+MoMo escrow, reconciliation, refunds.
+hobsinn-notification-service
+Built from services/notification-service/Dockerfile
+8085
+FCM, SMS, email dispatch, certificate emails.
+hobsinn-user-service
+Built from services/user-service/Dockerfile
+8086
+Auth, JWT, roles, badges.
+hobsinn-provider-service
+Built from services/provider-service/Dockerfile
+8087
+Pickup user registry, slot management, scoring.
+hobsinn-analytics-service
+Built from services/analytics-service/Dockerfile
+8088
+Metrics aggregation to MongoDB.
+33.2 CI/CD Pipeline (GitHub Actions)
+Stage
+Action
+On Failure
+Checkout
+actions/checkout@v4
+Pipeline stops.
+Setup JDK 21
+actions/setup-java@v4 with Temurin distribution
+Pipeline stops.
+Gradle Build
+gradle :services:{service}:build --no-daemon
+Pipeline stops. No deployment.
+Unit Tests
+gradle :services:{service}:test
+Pipeline stops. PR cannot be merged.
+Integration Tests
+gradle :services:{service}:integrationTest (Testcontainers: real PostgreSQL + Kafka)
+Pipeline stops. PR cannot be merged.
+Docker Build
+docker build -t hobsinnovations/hobsinn-{service}:{sha}
+Pipeline stops.
+Docker Push
+Push to GitHub Container Registry (ghcr.io)
+Pipeline stops.
+Deploy to Staging
+SSH to staging VM → docker-compose pull → docker-compose up -d
+Alert to team. Rollback to previous image.
+Smoke Test
+HTTP GET /actuator/health on staging. Assert 200.
+Auto-rollback on staging. Block main merge.
+Deploy to Production (main only)
+kubectl set image deployment/{service} on prod cluster
+Alert to team. K8s rolling update auto-rollback if readiness probe fails.
+33.3 Branching Strategy
+main: production-ready. Protected. Requires 1 reviewer approval + passing CI.
+develop: integration branch. All feature branches merge here. Auto-deploys to staging.
+Feature branches: feature/uc1-special-call, feature/uc3-dump-campaign, etc.
+Commit convention: feat(uc1): add special call creation endpoint | fix(payment): handle momo timeout
+No force pushes to develop or main. No credentials in any committed file.
+33.4 Kubernetes Production Configuration
+Resource
+Config
+Notes
+Deployment
+replicas: 2 minimum per service, maxSurge: 1, maxUnavailable: 0 (rolling update)
+Zero-downtime deployments
+HorizontalPodAutoscaler
+minReplicas: 2, maxReplicas: 10, CPU target: 70%, custom metric: kafka_consumer_lag > 1000
+Scale on both CPU and event queue backlog
+Service
+ClusterIP for internal services, LoadBalancer for api-gateway only
+Only gateway is externally reachable
+Secret
+JWT secret, DB password, MoMo API keys, FCM credentials
+Never in code or ConfigMap. Managed via cloud secrets manager.
+Liveness Probe
+GET /actuator/health/liveness every 30s, failureThreshold: 3
+Restart unhealthy pods
+Readiness Probe
+GET /actuator/health/readiness every 10s, failureThreshold: 3
+Remove from load balancer before restart
+PodDisruptionBudget
+minAvailable: 1 per service
+Guarantee availability during node maintenance
+34. AI Modelling Detail
+34.1 MatchingEngine — Scoring Algorithm
+Input features per pickup user candidate: distance_km (Double), reliability_score (Double, 0–1, derived from exponential moving average of composite job scores), capacity_litres (Int), current_accepted_jobs_in_window (Int). Configuration: matching_config table — w_distance, w_reliability, w_capacity, w_workload (all Double, sum must equal 1.0).
+Normalisation: distanceScore = 1 - (distanceKm / maxDistanceKm). workloadScore = 1 - (currentAcceptedJobs / maxAcceptedJobs). capacityScore = 1 - |1 - (requiredVolumeL / vehicleCapacityL)| clamped to [0,1]. Final compositeScore clamped to [0,1].
+34.2 HotspotDetector — DBSCAN
+Algorithm: DBSCAN. Distance metric: Haversine (Earth radius 6371 km). Parameters in reporting_config table: epsilon_meters (default 500), min_samples (default 3), time_window_days (default 30). Core point: report with ≥ min_samples neighbours within epsilon_meters. Output per cluster: centroid (mean lat/lng), radiusMeters, reportIds list, dominantSeverity (mode across cluster members).
+34.3 BagVolumeEstimator — TFLite Vision Module
+Model type: MobileNet V2 fine-tuned regression model. Input: 224×224 RGB image of a single waste bag. Output: estimated volume in litres (float). Inference runs on-device (Android TFLite runtime) with no network required. Training data: labelled images of waste bags in Cameroonian household contexts with known volumes. Fallback: if model confidence < 0.6 or image quality insufficient, prompt user to enter bag count manually.
+34.4 Job Scoring System — Specification
+For each completed or evaluated job:
+punctualityScore = max(0, 1 - (minutesLate × 0.25)). Clamped to [0, 1].
+completionStatusScore = 1.0 if COMPLETED, 0.0 if REASSIGNED or CANCELLED by pickup user.
+customerRatingScore = (customerRating - 1) / 5. Maps 1-star to 0.0, 6-star to 1.0.
+jobCompositeScore = (0.40 × punctualityScore) + (0.30 × completionStatusScore) + (0.30 × customerRatingScore).
+Reliability score update (exponential moving average, alpha = 0.2):
+newReliabilityScore = (alpha × jobCompositeScore) + ((1 - alpha) × previousReliabilityScore).
+Star rating display = ceil(newReliabilityScore × 6). Range: 1–6 stars.
+34.5 WasteSpreadPredictor — Future UC4
+Model type: Spatial-temporal regression. Input features: drone observation time series, wind direction/speed from weather API, rainfall probability, terrain DEM, drainage network proximity. Training data requirement: minimum 6 months of paired observations. Output: probability surface map as GeoTIFF, top-5 highest-risk zones for next 7 days.
+34.6 ClinicalCorrelationEngine — Future UC5
+Model type: Multivariate time-series correlation with lagged variables. Target: weekly disease incidence rate per geographic zone. Input features: PM2.5, CO, water turbidity 7-day rolling averages, waste density. Minimum Pearson r = 0.60 before advisory is issued. Output: risk score per zone, advisory level (Normal / Elevated / Warning / Alert), 95% confidence interval.
+35. Implementation Guide
+35.1 Sprint Schedule — CAHMIN 2026 (< 24 Hours Solo Relay)
+Phase
+Focus
+Gate Before Next Block
+Phase 1: Infrastructure (2 hrs)
+Docker Compose up and healthy — PostgreSQL + PostGIS running, Flyway V1 migration applied, Kafka topics auto-created, Gradle multi-project build compiling, GitHub Actions pipeline green.
+All containers healthy. V1 schema applied. CI green.
+Phase 2: UC1 Backend (4 hrs)
+UserService (register, JWT), ProviderService (pickup user onboarding, vehicle declaration), SchedulingService (createSpecialCallRequest, MatchingEngine, state transitions), PaymentService (initiatePayment, webhook handler, idempotency, reconciliation).
+Postman test: UC1 end-to-end passes. Payment confirmed via MoMo sandbox.
+Phase 3: UC2 Backend (2 hrs)
+General slot system: system admin creates slots, home users register, pickup users subscribe, pricing adjustment logic.
+Postman test: general slot registration and pricing calculation passes.
+Phase 4: UC3 Backend (4 hrs)
+ReportingService (dump and incident report intake, ambassador validation, QR attendance, hotspot detection). CampaignService (dump campaign full lifecycle, cleanup campaign lifecycle, health campaign posting). CostEstimationModule. CertificateService.
+Postman test: full dump campaign lifecycle from report to completed. Cleanup certificate generated.
+Phase 5: UC1 Android App (3 hrs)
+Special call flow: location sharing, bag count, optional photo, datetime picker, cost display, MoMo payment trigger, calendar update, Ongoing for pickup users.
+Android user can complete UC1 on real device from request to confirmation.
+Phase 6: UC3 Android App (3 hrs)
+Report dump flow, report dirty environment flow, campaign feed (filter health/environment), volunteer registration, contribute flow, leaderboard view.
+Android user can report incident, view campaign, volunteer and contribute.
+Phase 7: Admin Dashboard + Stubs (2 hrs)
+Admin dashboard in React: user management, ambassador registry, analytics overview. UC4/UC5/UC6 stub interfaces scaffolded and verified empty.
+Admin dashboard loads with real data. UC4/UC5/UC6 stubs return 501 Not Implemented.
+Phase 8: Integration Testing + Demo Prep (2 hrs)
+Integration testing all UC1/UC2/UC3 flows. Bug fixing. Demo data seeding. Demo walkthrough rehearsed. Handoff document prepared for next Claude Code instance.
+All Postman tests green. Demo walkthrough rehearsed. Handoff document complete.
+35.2 Solo Relay Implementation Protocol
+Because the hackathon implementation is performed by relay instances of Claude Code, each instance MUST produce a handoff document at the end of its session containing:
+Exact list of files created or modified with their full paths.
+Current state of the system: which services compile, which endpoints pass Postman tests, what is still broken.
+Exact next task with file path, class name, method name, and all context needed to continue.
+Any environment variables, secrets, or infrastructure state that the next instance needs to know.
+Any blockers or decisions deferred to the next instance with enough context to resolve them.
+This handoff document is the single source of truth for the relay. Without it, the next instance starts from scratch.
+35.3 Coding Standards
+Every public service method has a KDoc comment describing inputs, outputs, exceptions, and side effects.
+No hardcoded values anywhere. All configurable parameters in application.properties or environment variables. No credentials in code.
+Unit tests required for: all MatchingEngine scoring logic, all state machine transition validations, all CostEstimationModule computations, all payment idempotency checks, BagVolumeEstimator fallback logic, job scoring computation.
+Integration tests use Testcontainers: real PostgreSQL + PostGIS, real Kafka, real Redis.
+Every database schema change is a new numbered Flyway migration file. No manual ALTER TABLE in any environment.
+Git commits follow conventional commit format: feat(uc1): add special call creation endpoint
+Pull requests require one reviewer approval and a green CI pipeline before merge.
+35.4 UC4/UC5/UC6 Scaffolding Rules
+The following elements are created during the sprint but not implemented. Their purpose is to allow future integration without structural changes to existing code.
+DroneDataAdapter interface: defined in shared/common-events. Implementation: NoOpDroneDataAdapter — logs received events and returns empty.
+SensorDataAdapter interface: defined in shared/common-events. Implementation: NoOpSensorDataAdapter — stub.
+RecyclingAdapter interface: defined in shared/common-events. Implementation: NoOpRecyclingAdapter — stub.
+drone_observations table: created by V1 migration, stays empty.
+sensor_nodes and sensor_readings tables: created by V1 migration, stay empty.
+gar.drone.events, gar.sensor.events Kafka topics: created. No consumers subscribed in this phase.
+WasteSpreadPredictor, ClinicalCorrelationEngine, RecyclingCoordinatorService: empty Python/Kotlin module files with documented function signatures, expected input schemas, and output schemas. No implementation.
+source column on dump_reports: created. Value always 'USER' in this phase. Value 'SYSTEM' reserved for TIES integration.
+APPENDIX A — Glossary and Index
+Term
+Definition
+Key Occurrences
+ACID
+Atomicity, Consistency, Isolation, Durability — the four properties that guarantee database transactions are processed reliably. HOBSINN uses PostgreSQL for ACID compliance on all financial and scheduling operations.
+Sections 15.2, 24.1
+Ambassador
+The community-level authority and verification role in HOBSINN. Inherits from home user. Validates dump reports and dirty environment reports, coordinates campaigns and cleanups, manages pickup assignments for major dumps.
+Sections 3, 7, 21, 27, 31
+API Gateway
+Single entry point for all external client requests handling TLS, JWT validation, rate limiting, and routing. Runs on port 8080.
+Sections 16, 19.1, 32.1
+CAHMIN
+Cameroon Innovative Health Hackathon. The event for which HOBSINN was built. 48-hour closed-space hackathon, 3–4 April 2026, Mountain Hotel, Buea.
+Cover Page, Section 1
+Certificate (Volunteer)
+A PDF certificate generated for each volunteer who attends a cleanup or sensitisation campaign and is marked ATTENDED via QR scan. Contains volunteer name, date, location, volunteer program type, and ambassador name.
+Sections 11, 21.3, 26.2, 35.3
+CI/CD
+Continuous Integration / Continuous Deployment. The automated pipeline that builds, tests, and deploys code on every commit. HOBSINN uses GitHub Actions.
+Section 33.2
+Circuit Breaker
+A resilience pattern (one of the 12 scale factors) that prevents failures in one service from cascading to others by temporarily blocking requests to a struggling component. HOBSINN uses Spring Cloud Circuit Breaker.
+Sections 12, 32.3
+DBSCAN
+Density-Based Spatial Clustering of Applications with Noise. Spatial clustering algorithm used in HotspotDetector (epsilon=500m, minSamples=3, time_window=30 days) to group nearby incident reports into pollution hotspots.
+Sections 22.2, 34.2
+Danger Zone
+The 1-hour window before the agreed pickup time within which cancellations and payment confirmation requirements are enforced. Pickup users who cancel in the danger zone receive a 0% score.
+Sections 11, 27, 31.1
+Docker
+Containerisation platform packaging each HOBSINN microservice with its dependencies. Ensures consistent behaviour across development, staging, and production.
+Sections 15.2, 33.1
+Escrow
+A financial arrangement where MTN MoMo holds payment funds until a defined condition (job completion or campaign completion) is met before releasing to the payee.
+Sections 21.5, 27, 31
+FCM
+Firebase Cloud Messaging. Primary push notification channel for the Android app.
+Sections 19.5, 26.2
+Flyway
+Database migration tool applying versioned SQL scripts in order. Every schema change in HOBSINN is a numbered .sql file.
+Sections 15.2, 24.1, 33.2
+General Slot
+A pre-configured recurring weekly community pickup slot. Home users register for a slot per week. Pickup users subscribe to monthly slot coverage. Pricing adjusts dynamically based on aggregated bag capacity.
+Sections 11, 21.1, UC-002
+GIST Index
+Generalised Search Tree index. PostgreSQL index type optimised for geographic data. HOBSINN uses GIST indexes on all GEOGRAPHY columns.
+Section 24.3
+HOBSINN
+The platform brand name for HOBS Innovations' waste management and community health coordination system.
+Throughout
+Home User
+The base actor class in HOBSINN. Every user is first a home user. Pickup users and ambassadors inherit and extend this class.
+Sections 3, 7, 15, 23, 27
+HPA
+HorizontalPodAutoscaler. Kubernetes resource that automatically scales pod replicas based on CPU usage or Kafka consumer lag.
+Sections 12, 32.1, 33.4
+Idempotency
+The property of an operation that produces the same result whether performed once or multiple times. HOBSINN uses idempotency keys to prevent duplicate payment charges on retry.
+Sections 21.5, 26.1, 31.4
+JWT
+JSON Web Token. Carries userId, roles, and preferredLanguage. Signed with HS512, 64-character minimum secret. Access token: 24h. Refresh token: 7 days, rotated on use.
+Sections 19.2, 26.2
+Kafka
+Apache Kafka. Distributed event streaming platform used as HOBSINN's asynchronous event bus. Topic-per-domain architecture.
+Sections 15.2, 16, 19.3, 25
+MatchingEngine
+Read-only component that scores and ranks pickup user candidates for a pickup request using weighted composite scoring of distance, reliability, capacity, and workload.
+Sections 21.2, 22.1, 34.1
+MoMo
+MTN Mobile Money. Primary digital payment method in Cameroon. HOBSINN integrates MTN MoMo via MTNMoMoAdapter for escrow initiation, webhook confirmation, release, and refund.
+Sections 21.5, 23.3, 27
+Outbox Pattern
+Reliability pattern for Kafka publishing. Events are written to outbox_events table in the same database transaction as the business operation. OutboxPublisher polls and delivers to Kafka.
+Sections 19.4, 26.1
+Pickup User
+A user who collects waste. Extends the home user class with additional features: special call acceptance, general slot subscription, vehicle type and capacity declaration, Ongoing dashboard section.
+Sections 3, 7, 21, 27, 31
+PostGIS
+PostgreSQL extension for geographic and geometric data types and spatial queries. Used for ambassador zone polygons, dump report deduplication, and MatchingEngine proximity queries.
+Sections 15.2, 24.1, 24.3
+QR Attendance
+A QR code-based attendance system for cleanup campaigns. Each registered volunteer has a unique QR token. Ambassador scans codes on the day to mark ATTENDED automatically.
+Sections 11, 18.1, 21.6, 27
+RBAC
+Role-Based Access Control. User access determined by role (HOME_USER, PICKUP_USER, AMBASSADOR, SYSTEM_ADMINISTRATOR). Roles stored in JWT, enforced at service layer.
+Sections 12, 19.2
+Relay Implementation
+The solo implementation strategy for the hackathon: sequential Claude Code instances, each producing a precise handoff document for the next.
+Sections 10.3, 35.2
+Special Call
+A one-off custom pickup request made by a home user with a specific time, location, and bag count. Distinguished from the general slot system.
+Sections 11, 21.1, UC-001
+TIES
+Terrain Intelligence and Environmental Surveillance. Drone-based aerial mapping prototype at github.com/osvald-27/ties. The UC4 integration target post-hackathon.
+Sections 1, 10.4, 18.2
+TLS
+Transport Layer Security. Cryptographic protocol securing all API traffic. HOBSINN enforces TLS 1.2+ via the API Gateway.
+Sections 12, 19.1
+TFLite
+TensorFlow Lite. The on-device machine learning runtime used for the BagVolumeEstimator in the Android app.
+Sections 15.2, 22.3, 34.3
+Transactional Outbox
+See Outbox Pattern above.
+Section 19.4
+UC1–UC6
+Use Case identifiers. See Use Case Reference table after the table of contents.
+Throughout
+XAF / FCFA
+ISO 4217 currency code for the Central African Franc (FCFA). All monetary values in HOBSINN use XAF.
+Sections 11, 21.4, 24.2
+ZXing
+Zebra Crossing. Java/Kotlin library used for generating and scanning QR codes for cleanup event attendance tracking.
+Sections 15.2, 18.1
+APPENDIX B — References, Credits and Further Reading
+B.1 Official Technology Documentation
+Technology
+Official Documentation
+Purpose in HOBSINN
+Spring Boot 3.2
+https://docs.spring.io/spring-boot/docs/3.2.x/reference/html/
+Backend microservice framework for all services
+Spring Kafka
+https://docs.spring.io/spring-kafka/docs/current/reference/html/
+Kafka producer and consumer integration
+Spring Security
+https://docs.spring.io/spring-security/reference/
+JWT authentication and RBAC implementation
+PostgreSQL 15
+https://www.postgresql.org/docs/15/
+Primary operational database
+PostGIS 3.4
+https://postgis.net/docs/
+Geospatial extensions — zone polygons, location queries
+Apache Kafka
+https://kafka.apache.org/documentation/
+Distributed event streaming platform
+Flyway
+https://flywaydb.org/documentation/
+Database schema migration
+MongoDB 6.0
+https://www.mongodb.com/docs/manual/
+Analytics document store
+Docker
+https://docs.docker.com/
+Container platform for all services
+Kubernetes
+https://kubernetes.io/docs/home/
+Production container orchestration
+GitHub Actions
+https://docs.github.com/en/actions
+CI/CD pipeline automation
+Prometheus
+https://prometheus.io/docs/introduction/overview/
+Metrics collection and alerting
+Grafana
+https://grafana.com/docs/grafana/latest/
+Metrics visualisation dashboards
+MTN MoMo API
+https://momodeveloper.mtn.com/
+Payment gateway — Collections API
+Firebase Cloud Messaging
+https://firebase.google.com/docs/cloud-messaging
+Push notification delivery
+TensorFlow Lite (Android)
+https://www.tensorflow.org/lite/android
+On-device bag volume estimation model
+ZXing (QR Codes)
+https://github.com/zxing/zxing
+QR code generation and scanning for attendance
+Apache PDFBox
+https://pdfbox.apache.org/
+Volunteer certificate PDF generation
+OpenAPI 3.0 / SpringDoc
+https://springdoc.org/
+Automatic API documentation at /swagger-ui
+Testcontainers
+https://testcontainers.com/
+Real database and Kafka instances for integration tests
+B.2 Infrastructure Scale Design References
+Factor
+Reference
+12 Scalability Design Factors (source TikTok brief)
+https://chakray.com/7-essential-steps-to-design-a-high-availability-it-infrastructure/
+Horizontal and Vertical Scaling
+https://www.geeksforgeeks.org/system-design/system-design-horizontal-and-vertical-scaling/
+Scalable System Design Guide
+https://www.geeksforgeeks.org/system-design/guide-for-designing-highly-scalable-systems/
+Scaling Modern Systems
+https://medium.com/@tameemrafay/9-key-strategies-and-best-practices-for-scaling-modern-systems-0def50e50f9f
+Microservices Architecture
+https://www.linkedin.com/posts/vinay-kumar-71731825_if-you-dont-understand-these-12-system-activity-7430985380943843328-5DAY
+Transactional Outbox Pattern
+https://microservices.io/patterns/data/transactional-outbox.html
+DBSCAN Algorithm — Original Paper
+https://www.dbs.ifi.lmu.de/Publikationen/Papers/KDD96.final.frame.pdf
+PostGIS ST_Contains and ST_DWithin
+https://postgis.net/docs/ST_Contains.html
+B.3 Research and Environmental References
+Reference
+Source
+Relevance
+HYSACAM — Waste Management in Cameroon
+https://hysacam.cm
+Context for existing waste management infrastructure and gap analysis
+MTN MoMo Developer Portal — Sandbox Setup
+https://momodeveloper.mtn.com/api-documentation/sandbox
+Payment integration setup for the hackathon prototype
+WHO Ambient Air Quality Guidelines
+https://www.who.int/news-room/fact-sheets/detail/ambient-(outdoor)-air-quality-and-health
+Basis for PM2.5 and CO thresholds in UC5 clinical correlation model
+TIES Drone System Repository
+https://github.com/osvald-27/ties
+UC4 prototype — the drone data acquisition system for post-hackathon integration
+Haversine Formula
+https://mathworld.wolfram.com/Haversine.html
+Used in MatchingEngine and HotspotDetector distance calculations
+NASA SRTM Digital Elevation Model
+https://www2.jpl.nasa.gov/srtm/
+Terrain elevation data for UC4 WasteSpreadPredictor slope calculations
+Open-Meteo Weather API (Free)
+https://open-meteo.com/
+Weather forecast API for wind and rainfall data in UC4 spread prediction model
+B.4 CAHMIN 2026 and HOBS Innovations
+Resource
+Link
+CAHMIN 2026 Registration
+https://camihn.org/hackathon/register
+CAHMIN WhatsApp Group
+https://chat.whatsapp.com/EbA2vTngLhT5UwqXCJ8LR6?mode=gi_t
+HOBS Innovations GitHub (TIES prototype)
+https://github.com/osvald-27/ties
+— END OF DOCUMENT —
+Confidential | CAHMIN 2026 | 3–4 April 2026, Mountain Hotel, Buea

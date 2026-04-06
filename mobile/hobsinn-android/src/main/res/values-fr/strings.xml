@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HOBSINN</string>
+    <string name="special_call_title">Planifier un Appel Spécial</string>
+    <string name="general_slot_title">Enregistrer un Créneau</string>
+</resources>

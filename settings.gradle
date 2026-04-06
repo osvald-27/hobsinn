@@ -15,5 +15,6 @@ include(
     'services:reporting-service',
     'services:notification-service',
     'services:analytics-service',
-    'services:api-gateway'
+    'services:api-gateway',
+    'mobile:hobsinn-android'
 )

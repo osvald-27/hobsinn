@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HOBSINN</string>
+    <string name="special_call_title">Schedule Special Call</string>
+    <string name="general_slot_title">Register Slot</string>
+</resources>

@@ -7,41 +7,48 @@ plugins {
 }
 
 allprojects {
-    apply plugin: 'java'
+    if (it.name != 'hobsinn-android') {
+        apply plugin: 'java'
+    }
 
     group = 'com.hobsinnovations.hobsinn'
     version = '1.0.0-SNAPSHOT'
 
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(25)
+    if (it.name != 'hobsinn-android') {
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
         }
     }
 
     repositories {
         mavenCentral()
+        google()
         maven { url 'https://repo.spring.io/milestone' }
     }
 }
 
 subprojects {
-    apply plugin: 'org.jetbrains.kotlin.jvm'
+    if (it.name != 'hobsinn-android') {
+        apply plugin: 'org.jetbrains.kotlin.jvm'
 
-    kotlin {
-        jvmToolchain {
-            languageVersion.set(JavaLanguageVersion.of(25))
+        kotlin {
+            jvmToolchain {
+                languageVersion.set(JavaLanguageVersion.of(21))
+            }
         }
-    }
 
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
-        kotlinOptions {
-            freeCompilerArgs = ['-Xjsr305=strict']
-            jvmTarget = '19'
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
+            kotlinOptions {
+                freeCompilerArgs = ['-Xjsr305=strict']
+                jvmTarget = '21'
+            }
         }
-    }
 
-    tasks.withType(Test) {
-        useJUnitPlatform()
-        jvmArgs '-XX:+EnableDynamicAgentLoading'
+        tasks.withType(Test) {
+            useJUnitPlatform()
+            jvmArgs '-XX:+EnableDynamicAgentLoading'
+        }
     }
 }
